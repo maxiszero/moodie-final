@@ -322,7 +322,11 @@ export function Onboarding({ open, onDone }: { open: boolean; onDone: () => void
         <div className="onboarding-transition-content">
           <motion.h2
             className="onboarding-transition-text"
-            style={{ marginBottom: 20 }}
+            style={{
+              marginBottom: 20,
+              color: '#172033',
+              textShadow: '0 1px 0 rgba(255,255,255,0.9), 0 8px 22px rgba(15,23,42,0.22)',
+            }}
             initial={{ opacity: 0, y: 16 }}
             animate={transitionShow ? { opacity: 1, y: 0 } : { opacity: 0.85, y: 0 }}
             transition={{ duration: reduceMotion ? 0 : 0.45, ease: headerEase }}
@@ -356,7 +360,9 @@ export function Onboarding({ open, onDone }: { open: boolean; onDone: () => void
                   {dominant.emoji}
                 </div>
                 <p className="onboarding-avatar-label">
-                  Твоя эмоция: <b className="onboarding-emotion-name">{dominant.phrase}</b>
+                  <span style={{ color: '#253047', opacity: 1 }}>
+                    Твоя эмоция: <b style={{ color: '#111827' }}>{dominant.phrase}</b>
+                  </span>
                 </p>
               </motion.div>
 
@@ -366,11 +372,21 @@ export function Onboarding({ open, onDone }: { open: boolean; onDone: () => void
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: reduceMotion ? 0 : 0.12, duration: reduceMotion ? 0 : 0.4 }}
               >
-                <div className="onboarding-stat-card">
-                  <span id="onboardingPercent" className="stat-value">
+                <div
+                  className="onboarding-stat-card"
+                  style={{
+                    background: 'rgba(255,255,255,0.9)',
+                    border: '1px solid rgba(15,23,42,0.14)',
+                    color: '#172033',
+                    boxShadow: '0 12px 28px rgba(15,23,42,0.14)',
+                  }}
+                >
+                  <span id="onboardingPercent" className="stat-value" style={{ color: '#111827', textShadow: 'none' }}>
                     {(percentSame ?? 0).toString()}%
                   </span>
-                  <span className="stat-label">людей чувствуют то же самое</span>
+                  <span className="stat-label" style={{ color: '#3b465f', opacity: 1, textShadow: 'none' }}>
+                    людей чувствуют то же самое
+                  </span>
                 </div>
               </motion.div>
 
@@ -380,13 +396,22 @@ export function Onboarding({ open, onDone }: { open: boolean; onDone: () => void
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: reduceMotion ? 0 : 0.2, duration: reduceMotion ? 0 : 0.4 }}
               >
-                <p className="similar-posts-title">Посмотри, что пишут другие в этом настроении:</p>
+                <p className="similar-posts-title" style={{ color: '#253047', opacity: 1 }}>
+                  Посмотри, что пишут другие в этом настроении:
+                </p>
                 <div id="onboardingPostsList" className="similar-posts-list">
                   {similar.length ? (
                     similar.slice(0, 3).map((p, i) => (
                       <motion.div
                         key={p._id}
                         className="mini-post"
+                        style={{
+                          background: 'rgba(255,255,255,0.92)',
+                          borderLeftColor: 'rgba(17,24,39,0.34)',
+                          color: '#253047',
+                          boxShadow: '0 8px 20px rgba(15,23,42,0.12)',
+                          textShadow: 'none',
+                        }}
                         initial={{ opacity: 0, x: -8 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: reduceMotion ? 0 : 0.28 + i * 0.08, duration: reduceMotion ? 0 : 0.35 }}
@@ -395,7 +420,18 @@ export function Onboarding({ open, onDone }: { open: boolean; onDone: () => void
                       </motion.div>
                     ))
                   ) : (
-                    <div className="mini-post">Пока здесь пусто, стань первым!</div>
+                    <div
+                      className="mini-post"
+                      style={{
+                        background: 'rgba(255,255,255,0.92)',
+                        borderLeftColor: 'rgba(17,24,39,0.34)',
+                        color: '#253047',
+                        boxShadow: '0 8px 20px rgba(15,23,42,0.12)',
+                        textShadow: 'none',
+                      }}
+                    >
+                      Пока здесь пусто, стань первым!
+                    </div>
                   )}
                 </div>
               </motion.div>
