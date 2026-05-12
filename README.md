@@ -6,12 +6,14 @@ Moodie is a mood-focused social app with a React frontend and an Express/MongoDB
 
 - Frontend: React, TypeScript, Vite, React Router, Socket.IO client
 - Backend: Express, TypeScript, MongoDB/Mongoose, Socket.IO, JWT auth
+- Python service: FastAPI mood analysis and supportive tips
 - Tests: Vitest, Testing Library, Supertest
 
 ## Requirements
 
 - Node.js 20+
 - npm 10+
+- Python 3.10+
 - MongoDB connection string
 
 ## Setup
@@ -34,9 +36,22 @@ CORS_ORIGIN=http://localhost:5173
 AI_API_KEY=
 AI_API_KEYS=
 GEMINI_API_KEY=
+PYTHON_MOOD_SERVICE_URL=http://127.0.0.1:8000
+# Optional: set true to force JS fallback without calling Python
+DISABLE_PYTHON_MOOD_SERVICE=false
 ENABLE_ADMIN_BOOTSTRAP=false
 ADMIN_USERNAME=
 ALLOW_FIRST_ADMIN=false
+```
+
+Install Python service dependencies:
+
+```bash
+cd python-service
+python -m venv .venv
+.venv\Scripts\activate
+python -m pip install -r requirements.txt
+cd ..
 ```
 
 ## Development
@@ -47,17 +62,27 @@ Run frontend and backend together:
 npm run dev
 ```
 
+Run frontend, backend, and the Python mood service together:
+
+```bash
+npm run dev:with-python
+```
+
 Run one side only:
 
 ```bash
 npm run dev:frontend
 npm run dev:backend
+npm run dev:python
 ```
 
 Default local URLs:
 
 - Frontend: `http://localhost:5173`
 - Backend API: `http://localhost:5000`
+- Python mood service: `http://127.0.0.1:8000`
+
+The Python service is used for mood analysis (`/analyze`) and AI tips (`/tip`). If it is not running or returns an error, the backend automatically uses the existing JavaScript fallback so posting still works.
 
 ## Checks
 
@@ -111,4 +136,7 @@ frontend/
     state/              Session and feed state
     realtime/           Socket.IO client context
     ui/                 UI utilities
+python-service/
+  main.py               FastAPI mood analysis service
+  requirements.txt      Python dependencies
 ```

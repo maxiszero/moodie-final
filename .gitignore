@@ -12,3 +12,7 @@ frontend/.vite/
 backend/dist/
 backend/dist-test/
 backend/node_modules/
+
+python-service/.venv/
+python-service/__pycache__/
+python-service/.pytest_cache/

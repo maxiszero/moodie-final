@@ -17,11 +17,52 @@ function estimateFeedQuality(rawText) {
   return q;
 }
 
+function pythonMoodServiceUrl() {
+  const raw = String(process.env.PYTHON_MOOD_SERVICE_URL || 'http://127.0.0.1:8000').trim();
+  return raw.replace(/\/+$/, '');
+}
+
+function pythonMoodServiceEnabled() {
+  return String(process.env.DISABLE_PYTHON_MOOD_SERVICE || '').toLowerCase() !== 'true';
+}
+
+async function postPythonMood(path, body) {
+  if (!pythonMoodServiceEnabled()) return null;
+  const timeoutMs = parseInt(process.env.PYTHON_MOOD_SERVICE_TIMEOUT_MS, 10) || 2500;
+  try {
+    const res = await fetch(`${pythonMoodServiceUrl()}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (_e) {
+    return null;
+  }
+}
+
+function coercePythonAnalysis(data, text) {
+  if (!data || typeof data !== 'object' || !data.emotion) return null;
+  return {
+    emotion: String(data.emotion || 'neutral').toLowerCase(),
+    emoji: typeof data.emoji === 'string' && data.emoji ? data.emoji : '😐',
+    intensity: typeof data.intensity === 'number' ? data.intensity : 50,
+    color: typeof data.color === 'string' && data.color ? data.color : '#9E9E9E',
+    color2: typeof data.color2 === 'string' && data.color2 ? data.color2 : data.color || '#757575',
+    color3: typeof data.color3 === 'string' && data.color3 ? data.color3 : data.color2 || data.color || '#616161',
+    reasoning: typeof data.reasoning === 'string' ? data.reasoning : '',
+    tip: typeof data.tip === 'string' ? data.tip : '',
+    feedQuality: clampFeedQuality(data.feedQuality) ?? estimateFeedQuality(text),
+  };
+}
+
 /**
  * Analyzes text and returns { emotion, emoji, color, color2, color3, reasoning, tip, feedQuality } (fallback provided).
  * Supports API key rotation.
  */
-const analyzeEmotion = async (text, isTipOnly = false) => {
+const analyzeEmotionFallback = async (text, isTipOnly = false) => {
   const apiKeys = (process.env.AI_API_KEYS || process.env.AI_API_KEY || '').split(',').map(k => k.trim()).filter(k => k && k !== 'your_ai_api_key_here');
   
   for (const apiKey of apiKeys) {
@@ -285,7 +326,7 @@ Respond with ONLY valid JSON: {"summary":"..."}`;
  * @param {Array<{ text: string, emotion?: string, emoji?: string, createdAt?: Date }>} posts - last 7 days, newest first
  * @param {'ru'|'en'} lang - output language (profile owner's preference)
  */
-const summarizeWeeklyMood = async (posts, lang) => {
+const summarizeWeeklyMoodFallback = async (posts, lang) => {
   if (!posts || posts.length === 0) return '';
 
   const groqKeys = (process.env.AI_API_KEYS || process.env.AI_API_KEY || '')
@@ -401,6 +442,32 @@ const summarizeWeeklyMood = async (posts, lang) => {
   }
 
   return out || weeklySummaryFallback(posts, lang);
+};
+
+const analyzeEmotion = async (text, isTipOnly = false) => {
+  if (isTipOnly) {
+    const data = await postPythonMood('/tip', { text });
+    if (data && typeof data.tip === 'string' && data.tip.trim()) {
+      return { tip: data.tip };
+    }
+    return analyzeEmotionFallback(text, true);
+  }
+
+  const data = await postPythonMood('/analyze', { text });
+  const coerced = coercePythonAnalysis(data, text);
+  if (coerced) return coerced;
+  return analyzeEmotionFallback(text, false);
+};
+
+const summarizeWeeklyMood = async (posts, lang) => {
+  const usePythonWeekly = String(process.env.PYTHON_MOOD_WEEKLY || '').toLowerCase() === 'true';
+  if (!usePythonWeekly) return summarizeWeeklyMoodFallback(posts, lang);
+
+  const data = await postPythonMood('/weekly-summary', { posts, lang });
+  if (data && typeof data.summary === 'string' && data.summary.trim()) {
+    return data.summary.trim().slice(0, 500);
+  }
+  return summarizeWeeklyMoodFallback(posts, lang);
 };
 
 module.exports = { analyzeEmotion, summarizeWeeklyMood };
