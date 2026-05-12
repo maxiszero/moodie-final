@@ -7,9 +7,11 @@ import { initTheme } from './ui/theme'
 import { initI18n } from './i18n/i18n'
 import { SessionProvider } from './state/SessionContext'
 import { RealtimeProvider } from './realtime/RealtimeContext'
+import { initTelegramWebApp } from './telegram/webApp'
 
 initTheme()
 initI18n()
+initTelegramWebApp()
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

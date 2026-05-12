@@ -117,6 +117,52 @@ npm run start --workspace backend
 
 The frontend production assets are emitted to `frontend/dist`.
 
+## Telegram Mini App
+
+Moodie can run as a Telegram Mini App while keeping the existing Moodie login/register flow.
+
+Security note: never commit or paste a Telegram bot token into source files. If a token was shared publicly or in chat, revoke it in BotFather with `/revoke` and use the new token only through environment variables.
+
+Requirements:
+
+- A Telegram bot created in BotFather
+- A public HTTPS URL for the Moodie frontend
+- A backend reachable from that frontend, either same-origin `/api` or allowed with `CORS_ORIGIN`
+
+Recommended production shape:
+
+```text
+https://your-domain.com       -> frontend/dist
+https://your-domain.com/api   -> Express backend
+127.0.0.1:8000                -> Python mood service
+```
+
+If frontend and backend use different domains, set `CORS_ORIGIN` in `backend/.env`:
+
+```env
+CORS_ORIGIN=https://your-domain.com
+```
+
+Configure the bot menu button:
+
+```bash
+set TELEGRAM_BOT_TOKEN=replace-with-new-botfather-token
+set TELEGRAM_WEB_APP_URL=https://your-domain.com
+set TELEGRAM_BOT_SHORT_NAME=Moodie
+npm run telegram:setup
+```
+
+PowerShell syntax:
+
+```powershell
+$env:TELEGRAM_BOT_TOKEN="replace-with-new-botfather-token"
+$env:TELEGRAM_WEB_APP_URL="https://your-domain.com"
+$env:TELEGRAM_BOT_SHORT_NAME="Moodie"
+npm run telegram:setup
+```
+
+After setup, open the bot in Telegram and use the menu button to launch Moodie.
+
 ## Project Structure
 
 ```text
@@ -139,4 +185,6 @@ frontend/
 python-service/
   main.py               FastAPI mood analysis service
   requirements.txt      Python dependencies
+scripts/
+  setupTelegramBot.mjs  Telegram Mini App menu setup
 ```

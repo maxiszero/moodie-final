@@ -14,7 +14,8 @@
     "build": "npm run build --workspace backend && npm run build --workspace frontend",
     "test": "npm run test --workspace backend && npm run test:run --workspace frontend",
     "lint": "npm run lint --workspace frontend",
-    "start": "npm run start --workspace backend"
+    "start": "npm run start --workspace backend",
+    "telegram:setup": "node scripts/setupTelegramBot.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { setGettingStartedTaskDone } from '../ui/gettingStarted'
 import { t } from '../i18n/i18n'
+import { isTelegramMiniApp } from '../telegram/webApp'
 
 type InstallPromptEvent = Event & {
   prompt: () => Promise<void>
@@ -50,7 +51,7 @@ export function AddToHomeHint() {
 
   const ios = useMemo(() => isIOS(), [])
 
-  if (installed) return null
+  if (installed || isTelegramMiniApp()) return null
 
   return (
     <div className="gs-a2hs">
