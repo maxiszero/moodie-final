@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dist-test/
+coverage/
+.env
+.env.*
+
+frontend/dist/
+frontend/node_modules/
+frontend/.vite/
+
+backend/dist/
+backend/dist-test/
+backend/node_modules/

@@ -1,0 +1,3 @@
+# Allow indexing; after deploy set VITE_SITE_URL so the build can emit sitemap with an absolute URL.
+User-agent: *
+Allow: /
