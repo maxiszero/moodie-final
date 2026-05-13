@@ -8,6 +8,7 @@ import { initI18n } from './i18n/i18n'
 import { SessionProvider } from './state/SessionContext'
 import { RealtimeProvider } from './realtime/RealtimeContext'
 import { initTelegramWebApp } from './telegram/webApp'
+import { ToastProvider } from './ui/toastProvider'
 
 initTheme()
 initI18n()
@@ -25,7 +26,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <SessionProvider>
       <RealtimeProvider>
-        <App />
+        <ToastProvider>
+          <App />
+        </ToastProvider>
       </RealtimeProvider>
     </SessionProvider>
   </StrictMode>,

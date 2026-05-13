@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+python-socketio
+motor
+pydantic
+python-dotenv
+httpx
+PyJWT
+bcrypt
+pytest
+pytest-asyncio

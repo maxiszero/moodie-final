@@ -4,6 +4,7 @@ import type { DailyAnonymousAnswer, DailyQuestionToday } from '../types'
 import { t, getLang } from '../i18n/i18n'
 import { useSession } from '../state/SessionContext'
 import { useRealtime } from '../realtime/RealtimeContext'
+import { useToast } from '../ui/toastProvider'
 
 function anonKey(a: DailyAnonymousAnswer, i: number) {
   return `${a.createdAt}:${i}:${a.text.slice(0, 24)}`
@@ -17,6 +18,7 @@ type Props = {
 export function DailyQuestionFeed({ today, onTodayUpdate }: Props) {
   const s = useSession()
   const rt = useRealtime()
+  const { showToast } = useToast()
   const [answers, setAnswers] = useState<DailyAnonymousAnswer[]>([])
   const [loadingA, setLoadingA] = useState(false)
   const [draft, setDraft] = useState('')
@@ -61,10 +63,11 @@ export function DailyQuestionFeed({ today, onTodayUpdate }: Props) {
         body: JSON.stringify({ text }),
       })
       onTodayUpdate(next)
+      showToast(t('daily_saved_toast'), 'success')
       void loadAnswers()
     } catch (e: unknown) {
       const msg = e && typeof e === 'object' && 'message' in e ? String((e as { message: string }).message) : 'Error'
-      alert(msg)
+      showToast(msg, 'error')
     } finally {
       setBusy(false)
     }

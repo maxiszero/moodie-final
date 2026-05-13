@@ -19,6 +19,9 @@ const SettingsPage = lazy(() => import('./routes/SettingsPage').then(({ Settings
 const AdminPage = lazy(() => import('./routes/AdminPage').then(({ AdminPage }) => ({ default: AdminPage })))
 const ProfilePage = lazy(() => import('./routes/ProfilePage').then(({ ProfilePage }) => ({ default: ProfilePage })))
 const AuthPage = lazy(() => import('./routes/AuthPage').then(({ AuthPage }) => ({ default: AuthPage })))
+const GettingStartedPage = lazy(() =>
+  import('./routes/GettingStartedPage').then(({ GettingStartedPage }) => ({ default: GettingStartedPage })),
+)
 const TestsHubPage = lazy(() => import('./routes/tests/TestsHubPage').then(({ TestsHubPage }) => ({ default: TestsHubPage })))
 const EmotionTestPage = lazy(() =>
   import('./routes/tests/EmotionTestPage').then(({ EmotionTestPage }) => ({ default: EmotionTestPage })),
@@ -66,7 +69,7 @@ function FeedHome() {
         <FeedPage />
       </div>
       <aside className="sidebar" id="sidebar">
-        <GettingStartedWidget />
+        <GettingStartedWidget compactLink />
         <AddToHomeHint />
       </aside>
     </FeedMoodProvider>
@@ -80,7 +83,7 @@ function FeedLenta() {
         <FeedPage guestLenta />
       </div>
       <aside className="sidebar" id="sidebar">
-        <GettingStartedWidget />
+        <GettingStartedWidget compactLink />
         <AddToHomeHint />
       </aside>
     </FeedMoodProvider>
@@ -142,6 +145,14 @@ export default function App() {
               element={
                 <RequireAuth>
                   <SettingsPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/getting-started"
+              element={
+                <RequireAuth>
+                  <GettingStartedPage />
                 </RequireAuth>
               }
             />

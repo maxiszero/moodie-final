@@ -43,8 +43,33 @@ export default defineConfig({
   plugins: [react(), viteSeoDistFiles()],
   server: {
     proxy: {
+      '/socket.io': {
+        target: process.env.VITE_PYTHON_API_TARGET || 'http://localhost:8000',
+        changeOrigin: true,
+        ws: true,
+      },
+      '/api/auth': {
+        target: process.env.VITE_PYTHON_API_TARGET || 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/api/posts': {
+        target: process.env.VITE_PYTHON_API_TARGET || 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/api/users': {
+        target: process.env.VITE_PYTHON_API_TARGET || 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/api/daily-question': {
+        target: process.env.VITE_PYTHON_API_TARGET || 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/api/admin': {
+        target: process.env.VITE_PYTHON_API_TARGET || 'http://localhost:8000',
+        changeOrigin: true,
+      },
       '/api': {
-        target: 'http://localhost:5000',
+        target: process.env.VITE_NODE_API_TARGET || 'http://localhost:5000',
         changeOrigin: true,
       },
     },

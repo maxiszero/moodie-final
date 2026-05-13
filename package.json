@@ -6,13 +6,16 @@
     "backend"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev --workspace backend\" \"npm run dev --workspace frontend\"",
-    "dev:python": ".\\python-service\\.venv\\Scripts\\python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000 --app-dir python-service",
-    "dev:with-python": "concurrently \"npm run dev:python\" \"npm run dev --workspace backend\" \"npm run dev --workspace frontend\"",
+    "dev": "concurrently \"npm run dev:python-backend\" \"npm run dev:node-backend\" \"npm run dev --workspace frontend\"",
+    "dev:python-backend": "python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000 --app-dir backend-py",
+    "dev:node-backend": "npm run dev --workspace backend",
+    "dev:python": "npm run dev:python-backend",
+    "dev:with-python": "npm run dev",
     "dev:backend": "npm run dev --workspace backend",
     "dev:frontend": "npm run dev --workspace frontend",
     "build": "npm run build --workspace backend && npm run build --workspace frontend",
     "test": "npm run test --workspace backend && npm run test:run --workspace frontend",
+    "test:python": "python -m pytest backend-py",
     "lint": "npm run lint --workspace frontend",
     "start": "npm run start --workspace backend",
     "telegram:setup": "node scripts/setupTelegramBot.mjs"

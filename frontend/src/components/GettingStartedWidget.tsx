@@ -1,5 +1,6 @@
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { storageKeys } from '../config/storage'
 import {
   GETTING_STARTED_TASK_TOTAL,
@@ -21,7 +22,8 @@ const TASK_COPY: Array<{ key: GettingStartedTaskId; i18n: string }> = [
   { key: 'add_to_home', i18n: 'gs_task_a2hs' },
 ]
 
-export function GettingStartedWidget() {
+export function GettingStartedWidget({ compactLink = false }: { compactLink?: boolean }) {
+  const nav = useNavigate()
   const reduceMotion = useReducedMotion()
   const [progress, setProgress] = useState<GettingStartedProgress>(() => loadGettingStartedProgress())
   const [collapsed, setCollapsed] = useState(false)
@@ -40,6 +42,27 @@ export function GettingStartedWidget() {
   )
   const complete = isGettingStartedComplete(progress)
   const progressLabel = t('gs_progress').replace('{done}', String(doneCount)).replace('{total}', String(GETTING_STARTED_TASK_TOTAL))
+
+  if (compactLink) {
+    return (
+      <section
+        className="gs-widget gs-widget--compact-link is-collapsed"
+        aria-label={t('gs_title')}
+        role="link"
+        tabIndex={0}
+        onClick={() => nav('/getting-started')}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            nav('/getting-started')
+          }
+        }}
+      >
+        <GettingStarted1fitPromo />
+        <div className="gs-widget__meta">{progressLabel}</div>
+      </section>
+    )
+  }
 
   return (
     <section className={`gs-widget ${collapsed ? 'is-collapsed' : ''}`} aria-label={t('gs_title')}>

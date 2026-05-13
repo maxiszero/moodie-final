@@ -6,22 +6,22 @@
  */
 
 const EMOTION_PALETTE = {
-  happy: { color: '#FF9500', color2: '#FFB703', color3: '#FFCC33' },
-  sad: { color: '#2c3e50', color2: '#34495e', color3: '#4ca1af' },
-  anxious: { color: '#FFD200', color2: '#F5A623', color3: '#F7971E' },
-  calmness: { color: '#00b09b', color2: '#56ab2f', color3: '#96c93d' },
-  angry: { color: '#C62828', color2: '#E53935', color3: '#FF5252' },
-  scared: { color: '#311B92', color2: '#5E35B1', color3: '#7E57C2' },
-  loved: { color: '#EC407A', color2: '#E91E63', color3: '#AB47BC' },
+  happy: { color: '#FFD166', color2: '#FFB703', color3: '#FB8500' },
+  sad: { color: '#BFDBFE', color2: '#60A5FA', color3: '#2563EB' },
+  anxious: { color: '#FEF3C7', color2: '#F59E0B', color3: '#EA580C' },
+  calmness: { color: '#CCFBF1', color2: '#2DD4BF', color3: '#059669' },
+  angry: { color: '#FECACA', color2: '#EF4444', color3: '#B91C1C' },
+  scared: { color: '#DDD6FE', color2: '#8B5CF6', color3: '#4C1D95' },
+  loved: { color: '#FBCFE8', color2: '#EC4899', color3: '#BE185D' },
 
   // Extra moods used in app
   neutral: { color: '#9E9E9E', color2: '#757575', color3: '#616161' },
-  tired: { color: '#78716C', color2: '#A8A29E', color3: '#D6D3D1' },
-  apathy: { color: '#94A3B8', color2: '#CBD5E1', color3: '#64748B' },
-  melancholy: { color: '#2c3e50', color2: '#4ca1af', color3: '#6366F1' },
-  inspiration: { color: '#A855F7', color2: '#D8B4FE', color3: '#C084FC' },
-  drive: { color: '#EA580C', color2: '#FB923C', color3: '#FDBA74' },
-  excited: { color: '#FFB703', color2: '#FFCC33', color3: '#FFD200' },
+  tired: { color: '#E7E5E4', color2: '#A8A29E', color3: '#57534E' },
+  apathy: { color: '#E2E8F0', color2: '#94A3B8', color3: '#475569' },
+  melancholy: { color: '#C7D2FE', color2: '#818CF8', color3: '#4338CA' },
+  inspiration: { color: '#E9D5FF', color2: '#A855F7', color3: '#7E22CE' },
+  drive: { color: '#FED7AA', color2: '#FB923C', color3: '#C2410C' },
+  excited: { color: '#FEF08A', color2: '#FACC15', color3: '#CA8A04' },
 };
 
 const EMOTION_ALIASES = {

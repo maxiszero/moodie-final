@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { apiFetch } from '../api/apiClient'
 import { API_URL } from '../config/apiUrl'
 import { useSession } from '../state/SessionContext'
@@ -11,6 +12,7 @@ import { useFeedMood } from '../state/FeedMoodContext'
 import { t, getLang } from '../i18n/i18n'
 import { applyTheme } from '../ui/theme'
 import { setGettingStartedTaskDone } from '../ui/gettingStarted'
+import { useToast } from '../ui/toastProvider'
 
 function textHasLink(s: string) {
   return /(https?:\/\/\S+|www\.\S+)/i.test(s)
@@ -20,7 +22,9 @@ type FeedPageProps = { guestLenta?: boolean }
 
 export function FeedPage({ guestLenta }: FeedPageProps) {
   const s = useSession()
+  const loc = useLocation()
   const rt = useRealtime()
+  const { showToast } = useToast()
   const { emotionFilter, setEmotionFilter, stats, refetchStats } = useFeedMood()
 
   const [posts, setPosts] = useState<Post[]>([])
@@ -52,6 +56,11 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
   const aiTipTimerRef = useRef<number | null>(null)
   const aiTipAbortRef = useRef<AbortController | null>(null)
   const composerRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const tab = new URLSearchParams(loc.search).get('tab')
+    if (tab === 'daily') setSort('daily')
+  }, [loc.search])
 
   useEffect(() => {
     if (guestLenta && !s.isAuthed) {
@@ -300,7 +309,7 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
               disabled={postBusy || aiTipBusy || !text.trim()}
               onClick={async () => {
                 if (!text.trim()) {
-                  alert(t('ai_tip_alert'))
+                  showToast(t('ai_tip_alert'), 'info')
                   return
                 }
                 const key = text.trim().slice(0, 228)
@@ -342,7 +351,7 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
                 const content = text.trim()
                 if (!content) return
                 if (textHasLink(content)) {
-                  alert(t('no_links'))
+                  showToast(t('no_links'), 'error')
                   return
                 }
                 setPostBusy(true)
@@ -368,11 +377,12 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
                   if (mood.color2) localStorage.setItem('moodie_currentColor2', String(mood.color2))
                   if (mood.color3) localStorage.setItem('moodie_currentColor3', String(mood.color3))
                   setGettingStartedTaskDone('first_post')
+                  showToast(t('post_published'), 'success')
                   await s.refreshMe()
                   await refetchStats()
                 } catch (e: unknown) {
                   const msg = e && typeof e === 'object' && 'message' in e ? String((e as { message: string }).message) : 'fail'
-                  alert(msg)
+                  showToast(msg, 'error')
                 } finally {
                   setPostBusy(false)
                 }
@@ -380,6 +390,9 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
             >
               {postBusy ? t('publishing') : t('post')}
             </button>
+          </div>
+          <div className="composer-footnote" aria-live="polite">
+            {textHasLink(text) ? t('composer_no_links_hint') : t('composer_hint')}
           </div>
           <div id="aiTipContainer" className={`ai-tip-box ${aiTipOpen ? '' : 'hidden'}`}>
             <div className="ai-tip-content">{aiTipText}</div>

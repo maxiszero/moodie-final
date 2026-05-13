@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import type { Lang } from '../types'
 import { getLang } from '../i18n/i18n'
 
-/** Окончание акции 1FIT: 24 апреля, конец дня (локальное время). */
-export const FIT_PROMO_END = new Date(2026, 3, 24, 23, 59, 59)
+/** Окончание акции 1FIT: 2 июня, конец дня (локальное время). */
+export const FIT_PROMO_END = new Date(2026, 5, 2, 23, 59, 59)
 
 export function msUntilFitPromoEnd(now = Date.now()) {
   return FIT_PROMO_END.getTime() - now
