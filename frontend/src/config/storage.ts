@@ -25,6 +25,8 @@ export const storageKeys = {
   dailyNotifyEnabled: 'moodie_daily_notify_enabled',
   /** Last dayKey we showed a browser notification for (avoid duplicates) */
   dailyNotifyLastDay: 'moodie_daily_notify_last_day',
+  /** '1' when Moodie account is linked to Telegram */
+  telegramLinked: 'moodie_telegram_linked',
   /** Recent search queries (JSON string[]) */
   searchHistory: 'moodie_search_history',
 } as const

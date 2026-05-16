@@ -1,7 +1,16 @@
 from fastapi.testclient import TestClient
 
 from app.main import create_app
-from app.services.ai import estimate_feed_quality, fallback_analysis, weekly_summary_fallback, WeeklyPost
+from app.services.ai import WeeklyPost, estimate_feed_quality, fallback_analysis, weekly_summary_fallback
+from app.services.telegram_webapp import validate_webapp_init_data
+
+
+def test_telegram_init_data_rejects_garbage() -> None:
+    try:
+        validate_webapp_init_data("auth_date=1&hash=deadbeef", "token")
+    except ValueError:
+        return
+    raise AssertionError("expected ValueError")
 
 
 def test_health() -> None:

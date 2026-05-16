@@ -9,6 +9,7 @@ import {
   requestDailyNotifyPermission,
   setDailyNotifyEnabled,
 } from '../ui/dailyNotifications'
+import { isTelegramMiniApp } from '../telegram/webApp'
 
 export function SettingsPage() {
   const s = useSession()
@@ -22,6 +23,8 @@ export function SettingsPage() {
   const [pwdSaving, setPwdSaving] = useState(false)
   const [dailyNotify, setDailyNotify] = useState(() => getDailyNotifyEnabled())
   const [dailyNotifyHint, setDailyNotifyHint] = useState<'granted' | 'denied' | null>(null)
+  const [tgBusy, setTgBusy] = useState(false)
+  const [tgMsg, setTgMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
 
   const persist = async (preferredLanguage: Lang, preferredTheme: Theme) => {
     setMsg('')
@@ -118,6 +121,71 @@ export function SettingsPage() {
           </button>
           {pwdMsg ? (
             <p className={`settings-inline-msg ${pwdMsg.kind === 'ok' ? 'ok' : 'err'}`}>{pwdMsg.text}</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {s.isAuthed ? (
+        <div className="settings-card">
+          <h3>{t('settings_tg_title')}</h3>
+          <p className="settings-hint">{t('settings_tg_desc')}</p>
+          {s.telegramLinked ? (
+            <p className="settings-inline-msg ok" style={{ marginTop: 8 }}>
+              {t('settings_tg_linked')}
+            </p>
+          ) : null}
+          {!s.telegramLinked && isTelegramMiniApp() ? (
+            <button
+              type="button"
+              className="auth-btn"
+              style={{ marginTop: 12, width: '100%' }}
+              disabled={tgBusy}
+              onClick={() => {
+                setTgMsg(null)
+                setTgBusy(true)
+                void s
+                  .linkTelegram()
+                  .then(() => setTgMsg({ kind: 'ok', text: t('settings_tg_ok') }))
+                  .catch((e: unknown) => {
+                    const err = e as ApiError
+                    let text = t('settings_tg_err')
+                    if (err.status === 503) text = t('settings_tg_server')
+                    else if (err.status === 409) text = t('settings_tg_already_other')
+                    else if (err.message) text = err.message
+                    setTgMsg({ kind: 'err', text })
+                  })
+                  .finally(() => setTgBusy(false))
+              }}
+            >
+              {tgBusy ? t('settings_tg_linking') : t('settings_tg_link')}
+            </button>
+          ) : null}
+          {!s.telegramLinked && !isTelegramMiniApp() ? (
+            <p className="settings-hint" style={{ marginTop: 12 }}>
+              {t('settings_tg_mini_only')}
+            </p>
+          ) : null}
+          {s.telegramLinked ? (
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ marginTop: 12, width: '100%' }}
+              disabled={tgBusy}
+              onClick={() => {
+                setTgMsg(null)
+                setTgBusy(true)
+                void s
+                  .unlinkTelegram()
+                  .then(() => setTgMsg({ kind: 'ok', text: t('settings_tg_unlink_ok') }))
+                  .catch(() => setTgMsg({ kind: 'err', text: t('settings_tg_err') }))
+                  .finally(() => setTgBusy(false))
+              }}
+            >
+              {t('settings_tg_unlink')}
+            </button>
+          ) : null}
+          {tgMsg ? (
+            <p className={`settings-inline-msg ${tgMsg.kind === 'ok' ? 'ok' : 'err'}`}>{tgMsg.text}</p>
           ) : null}
         </div>
       ) : null}

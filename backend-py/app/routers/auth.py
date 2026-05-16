@@ -6,11 +6,13 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
 from pymongo.errors import DuplicateKeyError
 
+from ..config import settings
 from ..db import db_dependency
 from ..dependencies import current_user
 from ..mongo import mongo_json
 from ..security import client_ip, create_token, hash_password, verify_password
 from ..services.palette import palette_for_emotion
+from ..services.telegram_webapp import validate_webapp_init_data
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -51,6 +53,7 @@ def validate_password(password: str) -> str | None:
 
 
 def auth_payload(user: dict[str, Any], token: str | None = None) -> dict[str, Any]:
+    tg_id = user.get("telegramUserId")
     payload = {
         "_id": str(user["_id"]),
         "username": user.get("username", ""),
@@ -62,10 +65,15 @@ def auth_payload(user: dict[str, Any], token: str | None = None) -> dict[str, An
         "preferredLanguage": user.get("preferredLanguage") or "ru",
         "preferredTheme": user.get("preferredTheme") or "light",
         "role": user.get("role") or "user",
+        "telegramLinked": tg_id is not None,
     }
     if token is not None:
         payload["token"] = token
     return payload
+
+
+class TelegramLinkBody(BaseModel):
+    initData: str = ""
 
 
 @router.post("/register", status_code=201)
@@ -157,3 +165,72 @@ async def login_user(
 @router.get("/me")
 async def get_me(user: dict[str, Any] = Depends(current_user)) -> dict[str, Any]:
     return auth_payload(mongo_json(user))
+
+
+@router.post("/telegram/link")
+async def link_telegram(
+    body: TelegramLinkBody,
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+    user: dict[str, Any] = Depends(current_user),
+) -> dict[str, Any]:
+    if not settings.telegram_bot_token.strip():
+        raise HTTPException(status_code=503, detail={"message": "Telegram linking is not configured"})
+    init_data = body.initData.strip() if body.initData else ""
+    if not init_data:
+        raise HTTPException(status_code=400, detail={"message": "initData is required"})
+    try:
+        tg = validate_webapp_init_data(init_data, settings.telegram_bot_token)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail={"message": str(e)}) from e
+
+    tid = int(tg["telegram_user_id"])
+    tname = tg.get("telegram_username") or ""
+
+    existing_owner = await db.users.find_one({"telegramUserId": tid}, {"_id": 1})
+    if existing_owner and existing_owner["_id"] != user["_id"]:
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "This Telegram account is already linked to another user"},
+        )
+
+    my_id = user["_id"]
+    my_tg = user.get("telegramUserId")
+    if my_tg is not None and int(my_tg) != tid:
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "This Moodie account is already linked to another Telegram account. Unlink first."},
+        )
+
+    if my_tg is not None and int(my_tg) == tid:
+        fresh = await db.users.find_one({"_id": my_id})
+        return auth_payload(mongo_json(fresh))
+
+    try:
+        await db.users.update_one(
+            {"_id": my_id},
+            {"$set": {"telegramUserId": tid, "telegramUsername": tname, "updatedAt": datetime.now(timezone.utc)}},
+        )
+    except DuplicateKeyError:
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "This Telegram account is already linked to another user"},
+        ) from None
+
+    fresh = await db.users.find_one({"_id": my_id})
+    return auth_payload(mongo_json(fresh))
+
+
+@router.delete("/telegram/unlink")
+async def unlink_telegram(
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+    user: dict[str, Any] = Depends(current_user),
+) -> dict[str, Any]:
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {
+            "$unset": {"telegramUserId": "", "telegramUsername": ""},
+            "$set": {"updatedAt": datetime.now(timezone.utc)},
+        },
+    )
+    fresh = await db.users.find_one({"_id": user["_id"]})
+    return auth_payload(mongo_json(fresh))

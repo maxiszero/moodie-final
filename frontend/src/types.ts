@@ -20,6 +20,7 @@ export type AuthPayload = {
   preferredLanguage?: Lang
   preferredTheme?: Theme
   role?: 'user' | 'admin'
+  telegramLinked?: boolean
   token: string
 }
 

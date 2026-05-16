@@ -85,6 +85,18 @@ const userSchema = new mongoose.Schema({
     maxlength: 45,
     trim: true,
   },
+  telegramUserId: {
+    type: Number,
+    sparse: true,
+    unique: true,
+    index: true,
+  },
+  telegramUsername: {
+    type: String,
+    default: '',
+    maxlength: 64,
+    trim: true,
+  },
 }, {
   timestamps: true
 });

@@ -29,6 +29,7 @@ class Settings:
     groq_model: str = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
     gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
     ai_weekly_primary: str = os.getenv("AI_WEEKLY_PRIMARY", "auto").lower()
+    telegram_bot_token: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
 
 
 settings = Settings()

@@ -11,12 +11,14 @@ import {
 import type { AuthPayload, Lang, MePayload, Theme, UserMood } from '../types'
 import { applyTheme } from '../ui/theme'
 import { setLang } from '../i18n/i18n'
+import { getTelegramWebApp } from '../telegram/webApp'
 
 type SessionState = {
   token: string | null
   username: string | null
   userId: string | null
   role: 'user' | 'admin'
+  telegramLinked: boolean
   lang: Lang
   theme: Theme
   mood: UserMood
@@ -30,6 +32,8 @@ type SessionContextValue = SessionState & {
   login: (username: string, password: string) => Promise<void>
   register: (username: string, password: string) => Promise<void>
   refreshMe: () => Promise<void>
+  linkTelegram: () => Promise<void>
+  unlinkTelegram: () => Promise<void>
   lastAuthError: ApiError | null
 }
 
@@ -42,12 +46,17 @@ const defaultMood: UserMood = {
   color3: localStorage.getItem(storageKeys.currentColor3) || '#C7B8EA',
 }
 
+function readTelegramLinked(): boolean {
+  return localStorage.getItem(storageKeys.telegramLinked) === '1'
+}
+
 function loadInitialState(): SessionState {
   return {
     token: localStorage.getItem(storageKeys.token),
     username: localStorage.getItem(storageKeys.username),
     userId: localStorage.getItem(storageKeys.userId),
     role: (localStorage.getItem(storageKeys.role) as 'user' | 'admin') || 'user',
+    telegramLinked: readTelegramLinked(),
     lang: getStoredLang(),
     theme: getStoredTheme(),
     mood: defaultMood,
@@ -84,6 +93,10 @@ function applyAuthPayload(p: AuthPayload) {
     applyTheme(p.preferredTheme)
   }
 
+  if (typeof p.telegramLinked === 'boolean') {
+    localStorage.setItem(storageKeys.telegramLinked, p.telegramLinked ? '1' : '0')
+  }
+
   return mood
 }
 
@@ -110,6 +123,11 @@ function applyMePayload(p: MePayload) {
   localStorage.setItem(storageKeys.currentColor, mood.color)
   localStorage.setItem(storageKeys.currentColor2, mood.color2)
   localStorage.setItem(storageKeys.currentColor3, mood.color3)
+
+  if (typeof p.telegramLinked === 'boolean') {
+    localStorage.setItem(storageKeys.telegramLinked, p.telegramLinked ? '1' : '0')
+  }
+
   return mood
 }
 
@@ -123,7 +141,15 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem(storageKeys.username)
     localStorage.removeItem(storageKeys.userId)
     localStorage.setItem(storageKeys.role, 'user')
-    setState((s) => ({ ...s, token: null, username: null, userId: null, role: 'user' }))
+    localStorage.removeItem(storageKeys.telegramLinked)
+    setState((s) => ({
+      ...s,
+      token: null,
+      username: null,
+      userId: null,
+      role: 'user',
+      telegramLinked: false,
+    }))
   }, [])
 
   const setTheme = useCallback((theme: Theme) => {
@@ -153,6 +179,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         username: p.username,
         userId: p._id,
         role: p.role || 'user',
+        telegramLinked: Boolean(p.telegramLinked),
         lang: (p.preferredLanguage as Lang) || s.lang,
         theme: (p.preferredTheme as Theme) || s.theme,
         mood,
@@ -192,6 +219,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         username: p.username,
         userId: p._id,
         role: p.role || 'user',
+        telegramLinked: Boolean(p.telegramLinked),
         lang: (p.preferredLanguage as Lang) || s.lang,
         theme: (p.preferredTheme as Theme) || s.theme,
         mood,
@@ -210,6 +238,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       setState((s) => ({
         ...s,
         role: me.role || 'user',
+        telegramLinked: Boolean(me.telegramLinked),
         lang: (me.preferredLanguage as Lang) || s.lang,
         theme: (me.preferredTheme as Theme) || s.theme,
         mood,
@@ -221,6 +250,35 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     }
   }, [logout])
 
+  const linkTelegram = useCallback(async () => {
+    setLastAuthError(null)
+    const initData = getTelegramWebApp()?.initData
+    if (!initData?.trim()) {
+      throw new Error('Telegram initData missing — open Moodie inside Telegram')
+    }
+    const me = await apiFetch<MePayload>('/auth/telegram/link', {
+      method: 'POST',
+      body: JSON.stringify({ initData }),
+    })
+    const mood = applyMePayload(me)
+    setState((s) => ({
+      ...s,
+      telegramLinked: Boolean(me.telegramLinked),
+      mood,
+    }))
+  }, [])
+
+  const unlinkTelegram = useCallback(async () => {
+    setLastAuthError(null)
+    const me = await apiFetch<MePayload>('/auth/telegram/unlink', { method: 'DELETE' })
+    const mood = applyMePayload(me)
+    setState((s) => ({
+      ...s,
+      telegramLinked: Boolean(me.telegramLinked),
+      mood,
+    }))
+  }, [])
+
   const value = useMemo<SessionContextValue>(
     () => ({
       ...state,
@@ -231,9 +289,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       login,
       register,
       refreshMe,
+      linkTelegram,
+      unlinkTelegram,
       lastAuthError,
     }),
-    [lastAuthError, login, logout, refreshMe, register, setLangCb, setTheme, state],
+    [lastAuthError, linkTelegram, login, logout, refreshMe, register, setLangCb, setTheme, state, unlinkTelegram],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
