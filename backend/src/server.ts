@@ -1,9 +1,12 @@
-import 'dotenv/config';
+import path from 'node:path';
+import dotenv from 'dotenv';
 import http from 'node:http';
 import mongoose from 'mongoose';
 import { Server } from 'socket.io';
 import { createApp, corsOptions } from './app';
 import type { AppContext } from './app';
+
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const connectDB = require('./config/db') as () => Promise<void>;
 const User = require('./models/User');
