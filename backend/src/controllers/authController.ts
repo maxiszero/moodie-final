@@ -42,7 +42,6 @@ function validateTelegramInitData(initData) {
   const receivedHash = params.get('hash');
   if (!receivedHash) throw Object.assign(new Error('Missing hash'), { statusCode: 400 });
   params.delete('hash');
-  params.delete('signature');
 
   const authDateRaw = params.get('auth_date');
   if (!authDateRaw) throw Object.assign(new Error('Missing auth_date'), { statusCode: 400 });

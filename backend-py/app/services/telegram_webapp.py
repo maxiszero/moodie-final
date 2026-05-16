@@ -25,7 +25,6 @@ def validate_webapp_init_data(init_data: str, bot_token: str, max_age_sec: int =
     pairs = parse_qsl(init_data, keep_blank_values=True)
     data: dict[str, str] = dict(pairs)
     received_hash = data.pop("hash", None)
-    data.pop("signature", None)
     if not received_hash:
         raise ValueError("Missing hash")
 
