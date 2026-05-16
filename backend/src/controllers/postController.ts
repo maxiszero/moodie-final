@@ -4,6 +4,15 @@ const User = require('../models/User');
 const Comment = require('../models/Comment');
 const { analyzeEmotion } = require('../utils/aiAnalyzer');
 const { paletteForEmotion, normalizeEmotion } = require('../config/emotionPalette');
+const { notifyTelegramUser, notifyTelegramUsers } = require('../utils/telegramNotify');
+
+function langOf(user) {
+  return user?.preferredLanguage === 'en' ? 'en' : 'ru';
+}
+
+function msg(user, ru, en) {
+  return langOf(user) === 'en' ? en : ru;
+}
 
 /** One-time: older posts had no feedSortScore until first save / migration. */
 let feedSortBackfillScheduled = false;
@@ -332,6 +341,23 @@ const createPost = async (req, res, next) => {
       req.io.emit('new_post', postObj);
     }
 
+    const sameMoodFollowers = await User.find({
+      following: req.user._id,
+      _id: { $ne: req.user._id },
+      currentEmotion: emotion,
+      telegramActivityNotify: { $ne: false },
+      banned: { $ne: true },
+    }).select('telegramDailyNotify telegramActivityNotify telegramChatId telegramUserId preferredLanguage lastTelegramActivityNotifyAt');
+    notifyTelegramUsers(
+      sameMoodFollowers,
+      (u) => msg(
+        u,
+        `${req.user.username} сейчас чувствует то же, что и вы. Откройте Moodie, чтобы поддержать.`,
+        `${req.user.username} feels the same as you right now. Open Moodie to support them.`,
+      ),
+      'same_mood',
+    );
+
     res.status(201).json(postObj);
   } catch (error) {
     next(error);
@@ -406,6 +432,19 @@ const toggleReaction = async (req, res, next) => {
 
     await post.save();
 
+    if (existingReactionIndex === -1 && post.userId.toString() !== userId) {
+      const author = await User.findById(post.userId).select(
+        'telegramDailyNotify telegramActivityNotify telegramChatId telegramUserId preferredLanguage banned lastTelegramActivityNotifyAt',
+      );
+      if (author && !author.banned) {
+        notifyTelegramUser(
+          author,
+          msg(author, `${req.user.username} поддержал ваш пост в Moodie.`, `${req.user.username} supported your post on Moodie.`),
+          'reaction',
+        );
+      }
+    }
+
     res.status(200).json({
       message: existingReactionIndex > -1 ? 'Reaction removed' : 'Reaction added',
       reactions: post.reactions
@@ -459,6 +498,29 @@ const toggleRelatable = async (req, res, next) => {
     }
 
     await post.save();
+    if (index === -1 && post.userId.toString() !== userId) {
+      const author = await User.findById(post.userId).select(
+        'telegramDailyNotify telegramActivityNotify telegramChatId telegramUserId preferredLanguage banned lastTelegramActivityNotifyAt',
+      );
+      if (author && !author.banned) {
+        const milestone = [3, 5, 10].includes(post.relatable) ? post.relatable : null;
+        notifyTelegramUser(
+          author,
+          milestone
+            ? msg(
+                author,
+                `Ваш пост уже почувствовали ${milestone} раз. Вы не одни.`,
+                `Your post has been felt ${milestone} times. You are not alone.`,
+              )
+            : msg(
+                author,
+                `${req.user.username} тоже почувствовал ваш пост в Moodie.`,
+                `${req.user.username} felt your post too on Moodie.`,
+              ),
+          milestone ? 'relatable_milestone' : 'relatable',
+        );
+      }
+    }
     res.json({ relatable: post.relatable, relatableBy: post.relatableBy });
   } catch (error) {
     next(error);

@@ -106,6 +106,20 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  telegramActivityNotify: {
+    type: Boolean,
+    default: true,
+  },
+  lastTelegramActivityNotifyAt: {
+    type: Date,
+    default: null,
+  },
+  lastTelegramActivityNotifyType: {
+    type: String,
+    default: '',
+    maxlength: 32,
+    trim: true,
+  },
   lastDailyNotifyDayKey: {
     type: String,
     default: '',

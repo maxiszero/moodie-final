@@ -2,6 +2,7 @@
 const Comment = require('../models/Comment');
 const Post = require('../models/Post');
 const User = require('../models/User');
+const { notifyTelegramUser } = require('../utils/telegramNotify');
 
 const publicAuthorFields = 'username currentEmoji currentColor currentColor2 currentColor3';
 
@@ -76,6 +77,20 @@ const addComment = async (req, res, next) => {
     await Post.updateOne({ _id: post._id }, { $inc: { commentsCount: 1 } });
 
     const populated = await Comment.findById(comment._id).populate('userId', publicAuthorFields).lean();
+    if (post.userId.toString() !== req.user._id.toString()) {
+      const owner = await User.findById(post.userId).select(
+        'telegramDailyNotify telegramActivityNotify telegramChatId telegramUserId preferredLanguage banned lastTelegramActivityNotifyAt',
+      );
+      if (owner && !owner.banned) {
+        notifyTelegramUser(
+          owner,
+          owner.preferredLanguage === 'en'
+            ? `${req.user.username} commented on your post on Moodie.`
+            : `${req.user.username} прокомментировал ваш пост в Moodie.`,
+          'comment',
+        );
+      }
+    }
     res.status(201).json(populated);
   } catch (error) {
     next(error);

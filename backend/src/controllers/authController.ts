@@ -285,6 +285,9 @@ const unlinkTelegram = async (req, res, next) => {
     user.telegramUsername = '';
     user.telegramChatId = null;
     user.telegramDailyNotify = false;
+    user.telegramActivityNotify = false;
+    user.lastTelegramActivityNotifyAt = null;
+    user.lastTelegramActivityNotifyType = '';
     user.lastDailyNotifyDayKey = '';
     await user.save();
     res.json(authPayload(user));

@@ -3362,6 +3362,64 @@
             font-weight: 500;
         }
 
+        .getting-started-modal {
+            max-height: calc(100dvh - 40px);
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+
+        @media (max-width: 640px) {
+            .getting-started-page .gs-widget {
+                gap: 10px;
+            }
+
+            .gs-1fit-promo {
+                margin-top: 8px;
+                padding: 10px 11px 12px;
+                border-radius: 14px;
+                box-shadow: 0 4px 18px rgba(99, 102, 241, 0.12);
+                line-height: 1.35;
+            }
+
+            .gs-widget--compact-link .gs-1fit-promo {
+                margin-bottom: 8px;
+            }
+
+            .gs-1fit-promo__badge {
+                margin-bottom: 7px;
+                padding: 4px 9px;
+                font-size: 0.65rem;
+            }
+
+            .gs-1fit-promo__intro {
+                margin-bottom: 8px;
+                font-size: 0.88rem;
+                line-height: 1.35;
+            }
+
+            .gs-1fit-promo__countdown {
+                gap: 5px 8px;
+                padding: 8px 10px;
+                border-radius: 10px;
+            }
+
+            .gs-1fit-promo__label {
+                flex-basis: 100%;
+                font-size: 0.76rem;
+            }
+
+            .gs-1fit-promo__time {
+                font-size: 0.98rem;
+                letter-spacing: 0.01em;
+            }
+
+            .getting-started-modal {
+                max-height: calc(100dvh - 24px);
+                padding: 18px;
+                border-radius: 18px;
+            }
+        }
+
         @media (prefers-reduced-motion: no-preference) {
             .gs-1fit-promo__countdown {
                 animation: gs1fitPulse 4.5s ease-in-out infinite;
@@ -3440,6 +3498,27 @@
         .gs-item__text {
             font-weight: 700;
             font-size: 0.95rem;
+        }
+
+        @media (max-width: 640px) {
+            .gs-widget__list {
+                margin-top: 8px;
+                gap: 6px;
+            }
+
+            .gs-item {
+                gap: 8px;
+                padding: 8px 10px;
+                border-radius: 10px;
+            }
+
+            .gs-item__box {
+                width: 20px;
+            }
+
+            .gs-item__text {
+                font-size: 0.88rem;
+            }
         }
 
         .gs-a2hs {

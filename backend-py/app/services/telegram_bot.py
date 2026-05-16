@@ -39,6 +39,28 @@ def _web_app_markup() -> dict[str, Any] | None:
     }
 
 
+def _settings_markup(user: dict[str, Any] | None) -> dict[str, Any] | None:
+    base = _web_app_markup()
+    rows = base["inline_keyboard"] if base else []
+    if user:
+        daily_on = bool(user.get("telegramDailyNotify"))
+        activity_on = user.get("telegramActivityNotify") is not False
+        rows = [
+            *rows,
+            [
+                {
+                    "text": f"Daily {'off' if daily_on else 'on'}",
+                    "callback_data": f"notify:daily:{'off' if daily_on else 'on'}",
+                },
+                {
+                    "text": f"Activity {'off' if activity_on else 'on'}",
+                    "callback_data": f"notify:activity:{'off' if activity_on else 'on'}",
+                },
+            ],
+        ]
+    return {"inline_keyboard": rows} if rows else None
+
+
 def _parse_command(text: str) -> tuple[str, str]:
     t = text.strip()
     if not t.startswith("/"):
@@ -59,6 +81,24 @@ def _chat_id_for_delivery(user: dict[str, Any], fallback_chat_id: int) -> int:
     if tid is not None:
         return int(tid)
     return int(fallback_chat_id)
+
+
+def _notify_status_text(user: dict[str, Any], lang: str) -> str:
+    daily = bool(user.get("telegramDailyNotify"))
+    activity = user.get("telegramActivityNotify") is not False and bool(user.get("telegramChatId") or user.get("telegramUserId"))
+    if lang == "en":
+        return (
+            "Notification settings\n\n"
+            f"Daily question: {'on' if daily else 'off'}\n"
+            f"Activity: {'on' if activity else 'off'}\n\n"
+            "Use /notify daily on|off or /notify activity on|off."
+        )
+    return (
+        "Настройки уведомлений\n\n"
+        f"Вопрос дня: {'вкл' if daily else 'выкл'}\n"
+        f"Активность: {'вкл' if activity else 'выкл'}\n\n"
+        "Команды: /notify daily on|off или /notify activity on|off."
+    )
 
 
 class TelegramBotRunner:
@@ -86,6 +126,55 @@ class TelegramBotRunner:
         if reply_markup is not None:
             payload["reply_markup"] = reply_markup
         await self._post_json(client, "sendMessage", payload)
+
+    async def answer_callback_query(self, client: httpx.AsyncClient, callback_id: str, text: str = "") -> None:
+        payload: dict[str, Any] = {"callback_query_id": callback_id}
+        if text:
+            payload["text"] = text
+        await self._post_json(client, "answerCallbackQuery", payload)
+
+    async def handle_callback_query(self, client: httpx.AsyncClient, callback: dict[str, Any]) -> None:
+        callback_id = callback.get("id")
+        from_user = callback.get("from") or {}
+        tg_uid = from_user.get("id")
+        data = callback.get("data")
+        if not callback_id or tg_uid is None or not isinstance(data, str):
+            return
+
+        db = get_database()
+        user = await db.users.find_one({"telegramUserId": int(tg_uid)})
+        lang = _user_lang(user, from_user)
+        if not user:
+            await self.answer_callback_query(
+                client,
+                str(callback_id),
+                "Link Telegram first" if lang == "en" else "Сначала привяжите Telegram",
+            )
+            return
+
+        parts = data.split(":")
+        if len(parts) == 3 and parts[0] == "notify" and parts[1] in {"daily", "activity"}:
+            field = "telegramDailyNotify" if parts[1] == "daily" else "telegramActivityNotify"
+            value = parts[2] == "on"
+            await db.users.update_one(
+                {"_id": user["_id"]},
+                {"$set": {field: value, "updatedAt": datetime.now(timezone.utc)}},
+            )
+            await self.answer_callback_query(
+                client,
+                str(callback_id),
+                "Updated" if lang == "en" else "Обновлено",
+            )
+            chat = (callback.get("message") or {}).get("chat") or {}
+            chat_id = chat.get("id")
+            if chat_id is not None:
+                fresh = {**user, field: value}
+                await self.send_message(
+                    client,
+                    int(chat_id),
+                    _notify_status_text(fresh, lang),
+                    reply_markup=_settings_markup(fresh),
+                )
 
     async def handle_private_message(self, client: httpx.AsyncClient, message: dict[str, Any]) -> None:
         chat = message.get("chat") or {}
@@ -141,14 +230,22 @@ class TelegramBotRunner:
                     "/start — intro\n"
                     "/app — open Moodie\n"
                     "/today — today’s reflection question + Open button\n"
-                    "/notify on|off — daily reminder at a fixed UTC time (linked account only)",
+                    "/notify on|off — all notifications\n"
+                    "/notify daily on|off — daily question\n"
+                    "/notify activity on|off — follows, comments, support\n"
+                    "/settings — notification status\n"
+                    "/me — linked account info",
                 )
             else:
                 await reply(
                     "/start — знакомство\n"
                     "/app — открыть Moodie\n"
                     "/today — вопрос дня + кнопка «Открыть»\n"
-                    "/notify on|off — напоминание раз в сутки (нужен связанный аккаунт)",
+                    "/notify on|off — все уведомления\n"
+                    "/notify daily on|off — вопрос дня\n"
+                    "/notify activity on|off — подписки, комментарии, поддержка\n"
+                    "/settings — статус уведомлений\n"
+                    "/me — информация о привязке",
                 )
             return
 
@@ -167,7 +264,34 @@ class TelegramBotRunner:
                 line = f"Today's question\n\n{question}"
             else:
                 line = f"Вопрос дня\n\n{question}"
-            await reply(line, with_app=True)
+            await self.send_message(client, int(chat_id), line, reply_markup=_settings_markup(user))
+            return
+
+        if cmd == "me":
+            if not user:
+                await reply(
+                    "Telegram is not linked to a Moodie account." if lang == "en" else "Telegram не привязан к аккаунту Moodie.",
+                    with_app=True,
+                )
+                return
+            username = user.get("username") or "Moodie"
+            emotion = user.get("currentEmotion") or "neutral"
+            if lang == "en":
+                await reply(f"Linked account: {username}\nCurrent mood: {emotion}", with_app=True)
+            else:
+                await reply(f"Привязанный аккаунт: {username}\nТекущее состояние: {emotion}", with_app=True)
+            return
+
+        if cmd == "settings":
+            if not user:
+                await reply(
+                    "Link Telegram to your Moodie account first: open the mini app → Settings → Telegram."
+                    if lang == "en"
+                    else "Сначала привяжите Telegram в приложении: мини-приложение → Настройки → Telegram.",
+                    with_app=True,
+                )
+                return
+            await self.send_message(client, int(chat_id), _notify_status_text(user, lang), reply_markup=_settings_markup(user))
             return
 
         if cmd == "notify":
@@ -190,53 +314,63 @@ class TelegramBotRunner:
                     await reply("Этот аккаунт ограничен.")
                 return
 
-            if arg in ("on", "1", "true", "yes"):
+            parts = arg.split()
+            scope = parts[0] if parts and parts[0] in {"daily", "activity"} else "all"
+            action = parts[1] if scope != "all" and len(parts) > 1 else (parts[0] if parts else "")
+
+            if action in ("on", "1", "true", "yes"):
+                fields: dict[str, Any] = {"telegramChatId": int(chat_id), "updatedAt": datetime.now(timezone.utc)}
+                if scope in {"all", "daily"}:
+                    fields["telegramDailyNotify"] = True
+                if scope in {"all", "activity"}:
+                    fields["telegramActivityNotify"] = True
                 await db.users.update_one(
                     {"_id": user["_id"]},
-                    {
-                        "$set": {
-                            "telegramDailyNotify": True,
-                            "telegramChatId": int(chat_id),
-                            "updatedAt": datetime.now(timezone.utc),
-                        }
-                    },
+                    {"$set": fields},
                 )
                 if lang == "en":
-                    await reply("Daily question reminders are on. You’ll get one message per day (UTC).", with_app=True)
+                    await self.send_message(
+                        client,
+                        int(chat_id),
+                        "Notifications updated.\n\n" + _notify_status_text({**user, **fields}, lang),
+                        reply_markup=_settings_markup({**user, **fields}),
+                    )
                 else:
-                    await reply(
-                        "Напоминания о вопросе дня включены. Одно сообщение в сутки (по UTC).",
-                        with_app=True,
+                    await self.send_message(
+                        client,
+                        int(chat_id),
+                        "Уведомления обновлены.\n\n" + _notify_status_text({**user, **fields}, lang),
+                        reply_markup=_settings_markup({**user, **fields}),
                     )
                 return
 
-            if arg in ("off", "0", "false", "no"):
+            if action in ("off", "0", "false", "no"):
+                fields: dict[str, Any] = {"updatedAt": datetime.now(timezone.utc)}
+                if scope in {"all", "daily"}:
+                    fields["telegramDailyNotify"] = False
+                if scope in {"all", "activity"}:
+                    fields["telegramActivityNotify"] = False
                 await db.users.update_one(
                     {"_id": user["_id"]},
-                    {
-                        "$set": {
-                            "telegramDailyNotify": False,
-                            "updatedAt": datetime.now(timezone.utc),
-                        }
-                    },
+                    {"$set": fields},
                 )
                 if lang == "en":
-                    await reply("Daily reminders are off.", with_app=True)
+                    await self.send_message(
+                        client,
+                        int(chat_id),
+                        "Notifications updated.\n\n" + _notify_status_text({**user, **fields}, lang),
+                        reply_markup=_settings_markup({**user, **fields}),
+                    )
                 else:
-                    await reply("Напоминания выключены.", with_app=True)
+                    await self.send_message(
+                        client,
+                        int(chat_id),
+                        "Уведомления обновлены.\n\n" + _notify_status_text({**user, **fields}, lang),
+                        reply_markup=_settings_markup({**user, **fields}),
+                    )
                 return
 
-            on = bool(user.get("telegramDailyNotify"))
-            if lang == "en":
-                await reply(
-                    f"Daily reminders: {'on' if on else 'off'}. Use /notify on or /notify off.",
-                    with_app=True,
-                )
-            else:
-                await reply(
-                    f"Напоминания: {'вкл' if on else 'выкл'}. Команды: /notify on или /notify off.",
-                    with_app=True,
-                )
+            await self.send_message(client, int(chat_id), _notify_status_text(user, lang), reply_markup=_settings_markup(user))
             return
 
 
@@ -272,10 +406,18 @@ async def run_daily_notifies(runner: TelegramBotRunner) -> None:
             bucket = get_mood_bucket(user.get("currentEmotion"))
             question = pick_question(day_key, bucket, lang)
             chat_id = _chat_id_for_delivery(user, int(user["telegramUserId"]))
+            recent_post = await db.posts.find_one(
+                {"userId": user["_id"], "createdAt": {"$gte": datetime.now(timezone.utc) - timedelta(days=3)}},
+                {"_id": 1},
+            )
             if lang == "en":
                 text = f"Today's reflection question\n\n{question}"
+                if not recent_post:
+                    text = f"Moodie misses you. How are you today?\n\n{text}"
             else:
                 text = f"Вопрос дня\n\n{question}"
+                if not recent_post:
+                    text = f"Moodie скучает. Как вы сегодня?\n\n{text}"
 
             try:
                 await runner.send_message(
@@ -315,6 +457,13 @@ async def telegram_polling_loop() -> None:
                     continue
                 for upd in payload.get("result", []):
                     offset = int(upd["update_id"]) + 1
+                    callback = upd.get("callback_query")
+                    if isinstance(callback, dict):
+                        try:
+                            await runner.handle_callback_query(client, callback)
+                        except Exception:
+                            logger.exception("telegram callback handler failed")
+                        continue
                     msg = upd.get("message") or upd.get("edited_message")
                     if not isinstance(msg, dict):
                         continue

@@ -3,12 +3,17 @@ const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const Post = require('../models/Post');
 const { summarizeWeeklyMood } = require('../utils/aiAnalyzer');
+const { notifyTelegramUser } = require('../utils/telegramNotify');
 
 const publicUserFields =
   'username currentEmotion currentEmoji currentColor currentColor2 currentColor3 createdAt';
 
 const WEEKLY_SUMMARY_CACHE_MS = 12 * 60 * 60 * 1000;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+function langOf(user) {
+  return user?.preferredLanguage === 'en' ? 'en' : 'ru';
+}
 
 function validateNewPassword(password) {
   if (!password || typeof password !== 'string') return 'Password is required';
@@ -212,6 +217,14 @@ const followUser = async (req, res, next) => {
 
     me.following.push(target._id);
     await me.save();
+
+    notifyTelegramUser(
+      target,
+      langOf(target) === 'en'
+        ? `${me.username} followed you on Moodie.`
+        : `${me.username} подписался на вас в Moodie.`,
+      'follow',
+    );
 
     const followersCount = await User.countDocuments({ following: target._id });
     res.json({ message: 'Followed', isFollowing: true, followersCount });

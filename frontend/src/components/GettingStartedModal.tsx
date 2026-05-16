@@ -44,7 +44,7 @@ export function GettingStartedModal({ open, onClose }: { open: boolean; onClose:
           onClick={onClose}
         >
       <motion.div
-        className="welcome-modal"
+        className="welcome-modal getting-started-modal"
         onClick={(e) => e.stopPropagation()}
         style={{ maxWidth: 520 }}
         initial={{ opacity: 0, scale: 0.96, y: 12 }}

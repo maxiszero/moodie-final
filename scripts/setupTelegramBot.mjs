@@ -56,7 +56,15 @@ await callTelegram('setMyCommands', {
     },
     {
       command: 'notify',
-      description: 'Daily reminder: on or off (linked account)',
+      description: 'Notifications: daily/activity on or off',
+    },
+    {
+      command: 'settings',
+      description: 'Show notification settings',
+    },
+    {
+      command: 'me',
+      description: 'Show linked Moodie account',
     },
   ],
 })
