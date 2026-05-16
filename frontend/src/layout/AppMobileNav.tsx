@@ -33,14 +33,6 @@ const iconTests = (
   </svg>
 )
 
-const iconSteps = (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-    <path d="M9 11l2 2 4-4" />
-    <path d="M21 12a9 9 0 1 1-3-6.7" />
-    <path d="M21 3v6h-6" />
-  </svg>
-)
-
 const iconUser = (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -110,7 +102,6 @@ export function AppMobileNav() {
             <Tab to="/" end label={t('nav_home')} icon={iconHome} />
             <Tab to="/tests" label={t('nav_tests')} icon={iconTests} />
             <Tab to="/search" label={t('nav_search')} icon={iconSearch} />
-            <Tab to="/getting-started" label={t('gs_nav_short')} icon={iconSteps} />
             <Tab to="/settings" label={t('nav_settings')} icon={iconSettings} />
             {s.username ? (
               <Tab to={`/profile/${encodeURIComponent(s.username)}`} label={t('nav_bottom_profile')} icon={iconUser} />
