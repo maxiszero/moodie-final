@@ -2317,6 +2317,10 @@
             font-size: 1rem;
         }
 
+        .auth-btn--telegram {
+            margin-top: 12px;
+        }
+
         .auth-switch {
             margin-top: 16px;
             font-size: 0.9rem;

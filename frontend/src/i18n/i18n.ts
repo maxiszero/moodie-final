@@ -37,6 +37,11 @@ export const STRINGS: Record<Lang, Strings> = {
     signup: 'Создать',
     have_account: 'Уже есть аккаунт?',
     login_link: 'Войти',
+    auth_tg_login: 'Войти через Telegram',
+    auth_tg_busy: 'Telegram…',
+    auth_tg_not_linked:
+      'Этот Telegram ещё не привязан. Зарегистрируйся с логином и паролем, затем в настройках нажми «Привязать Telegram».',
+    auth_tg_no_initdata: 'Открой Moodie через кнопку бота и попробуй снова.',
     post: 'Опубликовать',
     publishing: 'Анализ и публикация…',
     post_placeholder: 'Как вы себя чувствуете?',
@@ -408,6 +413,11 @@ export const STRINGS: Record<Lang, Strings> = {
     signup: 'Sign up',
     have_account: 'Already have an account?',
     login_link: 'Log in',
+    auth_tg_login: 'Log in with Telegram',
+    auth_tg_busy: 'Telegram…',
+    auth_tg_not_linked:
+      'This Telegram account is not linked yet. Register with username and password, then tap “Link Telegram” in Settings.',
+    auth_tg_no_initdata: 'Open Moodie from the bot button and try again.',
     post: 'Post',
     publishing: 'Analyzing & posting…',
     post_placeholder: 'How do you feel?',

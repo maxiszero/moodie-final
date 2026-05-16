@@ -31,6 +31,7 @@ type SessionContextValue = SessionState & {
   logout: () => void
   login: (username: string, password: string) => Promise<void>
   register: (username: string, password: string) => Promise<void>
+  telegramLogin: () => Promise<void>
   refreshMe: () => Promise<void>
   linkTelegram: () => Promise<void>
   unlinkTelegram: () => Promise<void>
@@ -230,6 +231,38 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  const telegramLogin = useCallback(async () => {
+    setLastAuthError(null)
+    const initData = getTelegramWebApp()?.initData
+    if (!initData?.trim()) {
+      const err: ApiError = Object.assign(new Error('Telegram initData missing'), { status: 400 })
+      setLastAuthError(err)
+      throw err
+    }
+    try {
+      const p = await apiFetch<AuthPayload>('/auth/telegram/webapp-login', {
+        method: 'POST',
+        body: JSON.stringify({ initData }),
+        auth: false,
+      })
+      const mood = applyAuthPayload(p)
+      setState((s) => ({
+        ...s,
+        token: p.token,
+        username: p.username,
+        userId: p._id,
+        role: p.role || 'user',
+        telegramLinked: Boolean(p.telegramLinked),
+        lang: (p.preferredLanguage as Lang) || s.lang,
+        theme: (p.preferredTheme as Theme) || s.theme,
+        mood,
+      }))
+    } catch (e) {
+      setLastAuthError(e as ApiError)
+      throw e
+    }
+  }, [])
+
   const refreshMe = useCallback(async () => {
     if (!localStorage.getItem(storageKeys.token)) return
     try {
@@ -288,12 +321,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       logout,
       login,
       register,
+      telegramLogin,
       refreshMe,
       linkTelegram,
       unlinkTelegram,
       lastAuthError,
     }),
-    [lastAuthError, linkTelegram, login, logout, refreshMe, register, setLangCb, setTheme, state, unlinkTelegram],
+    [lastAuthError, linkTelegram, login, logout, refreshMe, register, setLangCb, setTheme, state, telegramLogin, unlinkTelegram],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

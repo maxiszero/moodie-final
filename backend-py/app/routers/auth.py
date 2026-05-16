@@ -162,6 +162,42 @@ async def login_user(
     return auth_payload(user, create_token(user["_id"]))
 
 
+@router.post("/telegram/webapp-login")
+async def telegram_webapp_login(
+    body: TelegramLinkBody,
+    request: Request,
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+) -> dict[str, Any]:
+    if not settings.telegram_bot_token.strip():
+        raise HTTPException(status_code=503, detail={"message": "Telegram login is not configured"})
+    init_data = body.initData.strip() if body.initData else ""
+    if not init_data:
+        raise HTTPException(status_code=400, detail={"message": "initData is required"})
+    try:
+        tg = validate_webapp_init_data(init_data, settings.telegram_bot_token)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail={"message": str(e)}) from e
+
+    tid = int(tg["telegram_user_id"])
+    user = await db.users.find_one({"telegramUserId": tid})
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "message": "Telegram is not linked to a Moodie account. Register with username and password, then link Telegram in Settings.",
+            },
+        )
+    if user.get("banned"):
+        raise HTTPException(status_code=403, detail={"message": "Account banned"})
+
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"lastIp": client_ip(request), "updatedAt": datetime.now(timezone.utc)}},
+    )
+    user["lastIp"] = client_ip(request)
+    return auth_payload(mongo_json(user), create_token(user["_id"]))
+
+
 @router.get("/me")
 async def get_me(user: dict[str, Any] = Depends(current_user)) -> dict[str, Any]:
     return auth_payload(mongo_json(user))

@@ -1,20 +1,25 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { LOGO_FALLBACK, LOGO_LIGHT } from '../config/logo'
+import type { ApiError } from '../api/apiClient'
 import { useSession } from '../state/SessionContext'
 import { t } from '../i18n/i18n'
 import { storageKeys } from '../config/storage'
+import { isTelegramMiniApp } from '../telegram/webApp'
+import { useToast } from '../ui/toastProvider'
 
 export function AuthPage() {
   const s = useSession()
   const nav = useNavigate()
   const loc = useLocation()
+  const { showToast } = useToast()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showLoginPass, setShowLoginPass] = useState(false)
   const [showRegPass, setShowRegPass] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [tgBusy, setTgBusy] = useState(false)
 
   const errText = useMemo(() => {
     if (!s.lastAuthError) return ''
@@ -112,6 +117,34 @@ export function AuthPage() {
         >
           {busy ? t('login_processing') : t('login_btn')}
         </button>
+
+        {isTelegramMiniApp() ? (
+          <button
+            type="button"
+            className="auth-btn btn-secondary auth-btn--telegram"
+            disabled={tgBusy || busy}
+            onClick={() => {
+              setTgBusy(true)
+              void (async () => {
+                try {
+                  await s.telegramLogin()
+                  nav('/', { replace: true })
+                } catch (e) {
+                  const err = e as ApiError
+                  if (err.status === 404) showToast(t('auth_tg_not_linked'))
+                  else if (err.status === 503) showToast(t('settings_tg_server'))
+                  else if (err.message) showToast(err.message)
+                  else showToast(t('auth_tg_no_initdata'))
+                } finally {
+                  setTgBusy(false)
+                }
+              })()
+            }}
+          >
+            {tgBusy ? t('auth_tg_busy') : t('auth_tg_login')}
+          </button>
+        ) : null}
+
         <div className="text-center auth-switch">
           {t('no_account')}{' '}
           <a id="showRegisterBtn" href="#/register" onClick={(e) => { e.preventDefault(); setMode('register') }}>
@@ -184,6 +217,34 @@ export function AuthPage() {
         >
           {busy ? t('register_processing') : t('register_btn')}
         </button>
+
+        {isTelegramMiniApp() ? (
+          <button
+            type="button"
+            className="auth-btn btn-secondary auth-btn--telegram"
+            disabled={tgBusy || busy}
+            onClick={() => {
+              setTgBusy(true)
+              void (async () => {
+                try {
+                  await s.telegramLogin()
+                  nav('/', { replace: true })
+                } catch (e) {
+                  const err = e as ApiError
+                  if (err.status === 404) showToast(t('auth_tg_not_linked'))
+                  else if (err.status === 503) showToast(t('settings_tg_server'))
+                  else if (err.message) showToast(err.message)
+                  else showToast(t('auth_tg_no_initdata'))
+                } finally {
+                  setTgBusy(false)
+                }
+              })()
+            }}
+          >
+            {tgBusy ? t('auth_tg_busy') : t('auth_tg_login')}
+          </button>
+        ) : null}
+
         <div className="text-center auth-switch">
           {t('have_account')}{' '}
           <a id="showLoginBtn" href="#/" onClick={(e) => { e.preventDefault(); setMode('login') }}>
