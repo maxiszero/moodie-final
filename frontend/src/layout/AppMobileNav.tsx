@@ -54,6 +54,13 @@ const iconShield = (
   </svg>
 )
 
+const iconSettings = (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+  </svg>
+)
+
 const iconUserPlus = (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
     <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -104,6 +111,7 @@ export function AppMobileNav() {
             <Tab to="/tests" label={t('nav_tests')} icon={iconTests} />
             <Tab to="/search" label={t('nav_search')} icon={iconSearch} />
             <Tab to="/getting-started" label={t('gs_nav_short')} icon={iconSteps} />
+            <Tab to="/settings" label={t('nav_settings')} icon={iconSettings} />
             {s.username ? (
               <Tab to={`/profile/${encodeURIComponent(s.username)}`} label={t('nav_bottom_profile')} icon={iconUser} />
             ) : null}
@@ -115,6 +123,7 @@ export function AppMobileNav() {
             <Tab to="/lenta" label={t('nav_public_feed_short')} icon={iconGlobe} />
             <Tab to="/tests" label={t('nav_tests')} icon={iconTests} />
             <Tab to="/search" label={t('nav_search')} icon={iconSearch} />
+            <Tab to="/settings" label={t('nav_settings')} icon={iconSettings} />
             <Tab to="/register" label={t('signup')} icon={iconUserPlus} />
           </>
         )}

@@ -97,6 +97,21 @@ const userSchema = new mongoose.Schema({
     maxlength: 64,
     trim: true,
   },
+  telegramChatId: {
+    type: Number,
+    default: null,
+    sparse: true,
+  },
+  telegramDailyNotify: {
+    type: Boolean,
+    default: false,
+  },
+  lastDailyNotifyDayKey: {
+    type: String,
+    default: '',
+    maxlength: 16,
+    trim: true,
+  },
 }, {
   timestamps: true
 });

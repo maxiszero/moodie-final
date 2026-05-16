@@ -140,14 +140,7 @@ export default function App() {
               <Route path="emotions" element={<EmotionTestPage />} />
               <Route path="mbti" element={<MbtiTestPage />} />
             </Route>
-            <Route
-              path="/settings"
-              element={
-                <RequireAuth>
-                  <SettingsPage />
-                </RequireAuth>
-              }
-            />
+            <Route path="/settings" element={<SettingsPage />} />
             <Route
               path="/getting-started"
               element={

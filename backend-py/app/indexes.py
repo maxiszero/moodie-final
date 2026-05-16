@@ -7,6 +7,7 @@ async def ensure_indexes() -> None:
     db = get_database()
     await db.users.create_index([("username", ASCENDING)], unique=True)
     await db.users.create_index([("telegramUserId", ASCENDING)], unique=True, sparse=True)
+    await db.users.create_index([("telegramDailyNotify", ASCENDING)])
     await db.users.create_index([("banned", ASCENDING)])
     await db.users.create_index([("createdAt", DESCENDING)])
     await db.posts.create_index([("userId", ASCENDING)])

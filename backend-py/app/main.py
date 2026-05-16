@@ -16,6 +16,7 @@ from .indexes import ensure_indexes
 from .realtime import sio
 from .routers import admin, auth, daily_question, posts, users
 from .services.daily_question import utc_day_key
+from .services.telegram_bot import start_telegram_background_tasks
 
 
 @asynccontextmanager
@@ -31,11 +32,17 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
                 last = dk
                 await sio.emit("daily_question_day", {"dayKey": dk})
 
-    task = asyncio.create_task(daily_rollover_watch())
+    rollover_task = asyncio.create_task(daily_rollover_watch())
+    tg_tasks = start_telegram_background_tasks()
     yield
-    task.cancel()
+    rollover_task.cancel()
     with suppress(asyncio.CancelledError):
-        await task
+        await rollover_task
+    for t in tg_tasks:
+        t.cancel()
+    for t in tg_tasks:
+        with suppress(asyncio.CancelledError):
+            await t
     await close_client()
 
 

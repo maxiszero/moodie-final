@@ -4,6 +4,8 @@ dist-test/
 coverage/
 .env
 .env.*
+!.env.example
+!backend-py/.env.example
 
 frontend/dist/
 frontend/node_modules/

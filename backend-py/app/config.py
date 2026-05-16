@@ -30,6 +30,10 @@ class Settings:
     gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
     ai_weekly_primary: str = os.getenv("AI_WEEKLY_PRIMARY", "auto").lower()
     telegram_bot_token: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    telegram_web_app_url: str = os.getenv("TELEGRAM_WEB_APP_URL", "").strip()
+    telegram_bot_short_name: str = os.getenv("TELEGRAM_BOT_SHORT_NAME", "Moodie").strip()
+    telegram_daily_notify_utc_hour: int = int(os.getenv("TELEGRAM_DAILY_NOTIFY_UTC_HOUR", "8"))
+    telegram_enable_polling: bool = os.getenv("TELEGRAM_ENABLE_POLLING", "true").lower() in ("1", "true", "yes")
 
 
 settings = Settings()

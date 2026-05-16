@@ -40,7 +40,23 @@ await callTelegram('setMyCommands', {
   commands: [
     {
       command: 'start',
-      description: `Open ${shortName}`,
+      description: `Start — intro and open ${shortName}`,
+    },
+    {
+      command: 'help',
+      description: 'Commands: app, today, notify',
+    },
+    {
+      command: 'app',
+      description: `Open ${shortName} mini app`,
+    },
+    {
+      command: 'today',
+      description: "Today's reflection question + Open",
+    },
+    {
+      command: 'notify',
+      description: 'Daily reminder: on or off (linked account)',
     },
   ],
 })

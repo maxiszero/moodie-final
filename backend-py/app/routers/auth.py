@@ -238,13 +238,30 @@ async def link_telegram(
         )
 
     if my_tg is not None and int(my_tg) == tid:
+        await db.users.update_one(
+            {"_id": my_id},
+            {
+                "$set": {
+                    "telegramChatId": tid,
+                    "telegramUsername": tname,
+                    "updatedAt": datetime.now(timezone.utc),
+                }
+            },
+        )
         fresh = await db.users.find_one({"_id": my_id})
         return auth_payload(mongo_json(fresh))
 
     try:
         await db.users.update_one(
             {"_id": my_id},
-            {"$set": {"telegramUserId": tid, "telegramUsername": tname, "updatedAt": datetime.now(timezone.utc)}},
+            {
+                "$set": {
+                    "telegramUserId": tid,
+                    "telegramUsername": tname,
+                    "telegramChatId": tid,
+                    "updatedAt": datetime.now(timezone.utc),
+                }
+            },
         )
     except DuplicateKeyError:
         raise HTTPException(
@@ -264,7 +281,13 @@ async def unlink_telegram(
     await db.users.update_one(
         {"_id": user["_id"]},
         {
-            "$unset": {"telegramUserId": "", "telegramUsername": ""},
+            "$unset": {
+                "telegramUserId": "",
+                "telegramUsername": "",
+                "telegramChatId": "",
+                "telegramDailyNotify": "",
+                "lastDailyNotifyDayKey": "",
+            },
             "$set": {"updatedAt": datetime.now(timezone.utc)},
         },
     )
