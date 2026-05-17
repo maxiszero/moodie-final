@@ -30,12 +30,12 @@ export function getTelegramWebApp(): TelegramWebApp | null {
 }
 
 export function isTelegramMiniApp(): boolean {
-  return Boolean(getTelegramWebApp()?.initData || getTelegramWebApp()?.initDataUnsafe)
+  return Boolean(getTelegramWebApp()?.initData?.trim())
 }
 
 export function initTelegramWebApp() {
   const app = getTelegramWebApp()
-  if (!app) return
+  if (!app?.initData?.trim()) return
 
   document.body.classList.add('telegram-mini-app')
   if (app.colorScheme) {
