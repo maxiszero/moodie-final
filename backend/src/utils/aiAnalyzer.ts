@@ -79,42 +79,45 @@ function coerceMoodSong(data) {
   };
 }
 
-/** Accept only Apple/iTunes preview and store URLs (defense in depth for stored user fields). */
+/** Apple/iTunes store, preview, and App Store links (https only). */
+function assertAppleHttpsHostname(hostname) {
+  const h = String(hostname || '').toLowerCase();
+  return h === 'apple.com' || h.endsWith('.apple.com');
+}
+
+/** Accept only Apple media/store URLs we persist on the user (defense in depth). */
 function assertSafeMoodSongUrls(song) {
   if (!song) return null;
   try {
     const p = new URL(song.moodSongPreviewUrl);
     if (p.protocol !== 'https:') return null;
-    const ph = p.hostname.toLowerCase();
-    if (ph !== 'audio-ssl.itunes.apple.com' && !ph.endsWith('.itunes.apple.com')) return null;
+    if (!assertAppleHttpsHostname(p.hostname)) return null;
   } catch {
     return null;
   }
   try {
     const e = new URL(song.moodSongExternalUrl);
     if (e.protocol !== 'https:') return null;
-    const eh = e.hostname.toLowerCase();
-    if (
-      eh !== 'music.apple.com' &&
-      eh !== 'itunes.apple.com' &&
-      !eh.endsWith('.music.apple.com') &&
-      !eh.endsWith('.itunes.apple.com')
-    ) {
-      return null;
-    }
+    if (!assertAppleHttpsHostname(e.hostname)) return null;
   } catch {
     return null;
   }
-  if (song.moodSongArtworkUrl) {
+  let artwork = typeof song.moodSongArtworkUrl === 'string' ? song.moodSongArtworkUrl.trim() : '';
+  if (artwork) {
     try {
-      const a = new URL(song.moodSongArtworkUrl);
-      if (a.protocol !== 'https:') return null;
-      if (!a.hostname.toLowerCase().endsWith('.mzstatic.com')) return null;
+      const a = new URL(artwork);
+      if (a.protocol !== 'https:') artwork = '';
+      else {
+        const ah = a.hostname.toLowerCase();
+        const okMz = ah.endsWith('.mzstatic.com');
+        const okApple = assertAppleHttpsHostname(ah);
+        if (!okMz && !okApple) artwork = '';
+      }
     } catch {
-      return null;
+      artwork = '';
     }
   }
-  return song;
+  return { ...song, moodSongArtworkUrl: artwork };
 }
 
 /** Validates client-submitted mood song payload for POST /posts. */
