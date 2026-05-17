@@ -433,7 +433,7 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
                   try {
                     suggest = await apiFetch<{ songs?: MoodSongPickPayload[] }>('/mood-song/suggest', {
                       method: 'POST',
-                      body: JSON.stringify({ text: content, limit: 5 }),
+                      body: JSON.stringify({ text: content, limit: 8 }),
                     })
                   } catch {
                     suggest = { songs: [] }
