@@ -25,11 +25,11 @@ if ('serviceWorker' in navigator) {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <SessionProvider>
-      <RealtimeProvider>
-        <ToastProvider>
+      <ToastProvider>
+        <RealtimeProvider>
           <App />
-        </ToastProvider>
-      </RealtimeProvider>
+        </RealtimeProvider>
+      </ToastProvider>
     </SessionProvider>
   </StrictMode>,
 )

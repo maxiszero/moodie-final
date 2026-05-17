@@ -2,7 +2,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { apiFetch } from '../api/apiClient'
 import { useSession } from '../state/SessionContext'
-import type { MoodHeatmapDay, ProfilePayload, PublicUser } from '../types'
+import type { AchievementBadge, DailyQuestionHistoryItem, MoodHeatmapDay, ProfilePayload, PublicUser } from '../types'
 import { PostCard } from '../components/PostCard'
 import { t, getLang } from '../i18n/i18n'
 import { setGettingStartedTaskDone } from '../ui/gettingStarted'
@@ -85,6 +85,24 @@ function userListRows(users: PublicUser[]) {
   )
 }
 
+function badgeCopy(id: string) {
+  const map: Record<string, string> = {
+    first_post: t('badge_first_post'),
+    seven_days: t('badge_seven_days'),
+    supporter_10: t('badge_supporter_10'),
+    supported_5: t('badge_supported_5'),
+  }
+  return map[id] || id
+}
+
+function summaryLines(value: string | undefined) {
+  return (value || '')
+    .split(/\n+|(?<=[.!?])\s+/)
+    .map((x) => x.replace(/^[-•]\s*/, '').trim())
+    .filter(Boolean)
+    .slice(0, 3)
+}
+
 export function ProfilePage() {
   const { username } = useParams()
   const nav = useNavigate()
@@ -97,6 +115,7 @@ export function ProfilePage() {
   const [followers, setFollowers] = useState<PublicUser[]>([])
   const [following, setFollowing] = useState<PublicUser[]>([])
   const [heatmap, setHeatmap] = useState<MoodHeatmapDay[]>([])
+  const [dailyHistory, setDailyHistory] = useState<DailyQuestionHistoryItem[]>([])
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const [heatmapSelection, setHeatmapSelection] = useState<{ dateStr: string; day: MoodHeatmapDay } | null>(null)
@@ -127,6 +146,8 @@ export function ProfilePage() {
     }
   }, [s.isAuthed, s.username, username])
 
+  const isOwnProfile = Boolean(s.isAuthed && username && s.username && username === s.username)
+
   useEffect(() => {
     if (!username) return
     setBusy(true)
@@ -136,16 +157,20 @@ export function ProfilePage() {
       apiFetch<PublicUser[]>(`/users/${encodeURIComponent(username)}/followers`, { auth: true }),
       apiFetch<PublicUser[]>(`/users/${encodeURIComponent(username)}/following`, { auth: true }),
       apiFetch<MoodHeatmapDay[]>(`/users/${encodeURIComponent(username)}/heatmap`, { auth: true }),
+      isOwnProfile
+        ? apiFetch<{ answers: DailyQuestionHistoryItem[] }>('/daily-question/me/history?limit=7')
+        : Promise.resolve({ answers: [] }),
     ])
-      .then(([main, fol, ing, hm]) => {
+      .then(([main, fol, ing, hm, history]) => {
         setPayload(main)
         setFollowers(fol || [])
         setFollowing(ing || [])
         setHeatmap(hm || [])
+        setDailyHistory(history.answers || [])
       })
       .catch((e: { message?: string }) => setErr(e?.message || t('profile_load_error')))
       .finally(() => setBusy(false))
-  }, [username])
+  }, [username, isOwnProfile])
 
   useEffect(() => {
     setHeatmapSelection(null)
@@ -229,6 +254,8 @@ export function ProfilePage() {
     const emotion = u.currentEmotion || 'neutral'
     const isOwn = s.username === u.username
     const showFollow = s.isAuthed && !isOwn && !payload.isFollowing
+    const weeklyLines = summaryLines(u.weeklyAiSummary)
+    const badges = payload.badges || []
 
     return (
       <div className="profile-hero">
@@ -242,14 +269,27 @@ export function ProfilePage() {
             {emoji}
           </div>
           <div className="profile-username">@{u.username}</div>
-        <div className="profile-ai-weekly" aria-live="polite">
+        <div className="profile-ai-weekly profile-ai-weekly--card" aria-live="polite">
           <div className="profile-ai-weekly-label">{t('profile_weekly_ai_label')}</div>
-          {u.weeklyAiSummary?.trim() ? (
-            <div className="profile-ai-weekly-text">{u.weeklyAiSummary.trim()}</div>
+          {weeklyLines.length ? (
+            <ul className="profile-ai-weekly-list">
+              {weeklyLines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
           ) : (
             <div className="profile-ai-weekly-empty">{t('profile_weekly_ai_empty')}</div>
           )}
         </div>
+        {badges.length ? (
+          <div className="profile-badges" aria-label={t('profile_badges_title')}>
+            {badges.map((badge: AchievementBadge) => (
+              <span key={badge.id} className={`profile-badge profile-badge--${badge.level || 'bronze'}`}>
+                {badgeCopy(badge.id)}
+              </span>
+            ))}
+          </div>
+        ) : null}
         <div className="profile-status-label">
           {t('profile_status')}: {emotion}
         </div>
@@ -327,6 +367,24 @@ export function ProfilePage() {
         {payload && !err ? (
           <>
             {hero}
+            {isOwnProfile ? (
+              <section className="daily-history-card">
+                <div className="daily-history-card__title">{t('daily_history_title')}</div>
+                {dailyHistory.length ? (
+                  <div className="daily-history-card__list">
+                    {dailyHistory.map((item) => (
+                      <article key={item.dayKey} className="daily-history-card__item">
+                        <div className="daily-history-card__date">{item.dayKey}</div>
+                        <div className="daily-history-card__question">{item.question}</div>
+                        <p className="daily-history-card__answer">{item.text}</p>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="daily-history-card__empty">{t('daily_history_empty')}</p>
+                )}
+              </section>
+            ) : null}
             <div id="moodHeatmap" className={`heatmap-container ${payload.posts.length ? '' : 'hidden'}`}>
               <div className="heatmap-title">{t('mood_calendar')}</div>
               <div

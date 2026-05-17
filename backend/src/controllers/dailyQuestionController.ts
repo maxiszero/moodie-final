@@ -182,8 +182,33 @@ const postAnswer = async (req, res) => {
   }
 };
 
+const getMyHistory = async (req, res) => {
+  try {
+    const limit = Math.min(30, Math.max(1, parseInt(req.query.limit, 10) || 7));
+    const rows = await DailyAnswer.find({ userId: req.user._id })
+      .sort({ dayKey: -1, createdAt: -1 })
+      .limit(limit)
+      .select('dayKey moodBucket questionText lang text createdAt updatedAt')
+      .lean();
+    res.json({
+      answers: rows.map((r) => ({
+        dayKey: r.dayKey,
+        moodBucket: r.moodBucket,
+        question: r.questionText,
+        lang: r.lang,
+        text: r.text,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+      })),
+    });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+};
+
 module.exports = {
   getToday,
   getAnonymousAnswers,
   postAnswer,
+  getMyHistory,
 };

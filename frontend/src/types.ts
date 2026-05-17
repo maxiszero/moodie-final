@@ -26,6 +26,17 @@ export type AuthPayload = {
 
 export type MePayload = Omit<AuthPayload, 'token'> & { token?: never }
 
+export type TelegramSettings = {
+  telegramLinked: boolean
+  telegramDailyNotify: boolean
+  telegramActivityNotify: boolean
+  telegramDailyNotifyHour: number
+  telegramTimezoneOffsetMinutes: number
+  telegramQuietHoursEnabled: boolean
+  telegramQuietStartHour: number
+  telegramQuietEndHour: number
+}
+
 export type PostAuthor = {
   _id: string
   username: string
@@ -55,6 +66,27 @@ export type DailyQuestionToday = {
 export type DailyAnonymousAnswer = {
   text: string
   createdAt: string
+}
+
+export type DailyQuestionHistoryItem = {
+  dayKey: string
+  moodBucket: string
+  question: string
+  lang: string
+  text: string
+  createdAt: string
+  updatedAt?: string
+}
+
+export type AchievementBadge = {
+  id: 'first_post' | 'seven_days' | 'supporter_10' | 'supported_5' | string
+  level?: 'bronze' | 'silver' | 'gold' | string
+}
+
+export type AppNotification = {
+  type?: string
+  message: string
+  createdAt?: string
 }
 
 export type Post = {
@@ -113,6 +145,8 @@ export type ProfilePayload = {
   followersCount: number
   followingCount: number
   totalLikesReceived: number
+  totalSupportReceived?: number
+  badges?: AchievementBadge[]
   isFollowing: boolean
 }
 

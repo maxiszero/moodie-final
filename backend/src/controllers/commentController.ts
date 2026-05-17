@@ -3,6 +3,7 @@ const Comment = require('../models/Comment');
 const Post = require('../models/Post');
 const User = require('../models/User');
 const { notifyTelegramUser } = require('../utils/telegramNotify');
+const { notifyInAppUser } = require('../utils/inAppNotify');
 
 const publicAuthorFields = 'username currentEmoji currentColor currentColor2 currentColor3';
 
@@ -79,16 +80,14 @@ const addComment = async (req, res, next) => {
     const populated = await Comment.findById(comment._id).populate('userId', publicAuthorFields).lean();
     if (post.userId.toString() !== req.user._id.toString()) {
       const owner = await User.findById(post.userId).select(
-        'telegramDailyNotify telegramActivityNotify telegramChatId telegramUserId preferredLanguage banned lastTelegramActivityNotifyAt',
+        'telegramDailyNotify telegramActivityNotify telegramChatId telegramUserId preferredLanguage banned lastTelegramActivityNotifyAt telegramTimezoneOffsetMinutes telegramQuietHoursEnabled telegramQuietStartHour telegramQuietEndHour',
       );
       if (owner && !owner.banned) {
-        notifyTelegramUser(
-          owner,
-          owner.preferredLanguage === 'en'
-            ? `${req.user.username} commented on your post on Moodie.`
-            : `${req.user.username} прокомментировал ваш пост в Moodie.`,
-          'comment',
-        );
+        const text = owner.preferredLanguage === 'en'
+          ? `💬 ${req.user.username} commented on your post on Moodie.`
+          : `💬 ${req.user.username} прокомментировал ваш пост в Moodie.`;
+        notifyTelegramUser(owner, text, 'comment');
+        notifyInAppUser(req.io, owner._id, text, 'comment');
       }
     }
     res.status(201).json(populated);

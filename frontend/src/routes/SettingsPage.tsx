@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiFetch, type ApiError } from '../api/apiClient'
 import { useSession } from '../state/SessionContext'
-import type { Lang, Theme } from '../types'
+import type { Lang, TelegramSettings, Theme } from '../types'
 import { t } from '../i18n/i18n'
 import {
   getDailyNotifyEnabled,
@@ -25,6 +25,23 @@ export function SettingsPage() {
   const [dailyNotifyHint, setDailyNotifyHint] = useState<'granted' | 'denied' | null>(null)
   const [tgBusy, setTgBusy] = useState(false)
   const [tgMsg, setTgMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+  const [tgSettings, setTgSettings] = useState<TelegramSettings | null>(null)
+  const [tgSettingsSaving, setTgSettingsSaving] = useState(false)
+
+  useEffect(() => {
+    if (!s.isAuthed) return
+    let alive = true
+    apiFetch<TelegramSettings>('/users/me/telegram-settings')
+      .then((next) => {
+        if (alive) setTgSettings(next)
+      })
+      .catch(() => {
+        /* optional */
+      })
+    return () => {
+      alive = false
+    }
+  }, [s.isAuthed, s.telegramLinked])
 
   const persist = async (preferredLanguage: Lang, preferredTheme: Theme) => {
     setMsg('')
@@ -64,6 +81,30 @@ export function SettingsPage() {
       setPwdMsg({ kind: 'err', text: m })
     } finally {
       setPwdSaving(false)
+    }
+  }
+
+  const patchTelegramSettings = async (patch: Partial<TelegramSettings>) => {
+    if (!tgSettings) return
+    const optimistic = { ...tgSettings, ...patch, telegramTimezoneOffsetMinutes: new Date().getTimezoneOffset() }
+    setTgSettings(optimistic)
+    setTgSettingsSaving(true)
+    setTgMsg(null)
+    try {
+      const next = await apiFetch<TelegramSettings>('/users/me/telegram-settings', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          ...patch,
+          telegramTimezoneOffsetMinutes: new Date().getTimezoneOffset(),
+        }),
+      })
+      setTgSettings(next)
+      setTgMsg({ kind: 'ok', text: t('settings_tg_notify_saved') })
+    } catch (e) {
+      setTgSettings(tgSettings)
+      setTgMsg({ kind: 'err', text: (e as ApiError).message || t('settings_save_error') })
+    } finally {
+      setTgSettingsSaving(false)
     }
   }
 
@@ -186,6 +227,88 @@ export function SettingsPage() {
           ) : null}
           {tgMsg ? (
             <p className={`settings-inline-msg ${tgMsg.kind === 'ok' ? 'ok' : 'err'}`}>{tgMsg.text}</p>
+          ) : null}
+          {s.telegramLinked && tgSettings ? (
+            <div className="settings-tg-panel">
+              <label className="settings-option">
+                <input
+                  type="checkbox"
+                  checked={tgSettings.telegramDailyNotify}
+                  disabled={tgSettingsSaving}
+                  onChange={(e) => void patchTelegramSettings({ telegramDailyNotify: e.target.checked })}
+                />
+                <span>{t('settings_tg_daily_toggle')}</span>
+              </label>
+              <label className="settings-option">
+                <input
+                  type="checkbox"
+                  checked={tgSettings.telegramActivityNotify}
+                  disabled={tgSettingsSaving}
+                  onChange={(e) => void patchTelegramSettings({ telegramActivityNotify: e.target.checked })}
+                />
+                <span>{t('settings_tg_activity_toggle')}</span>
+              </label>
+              <div className="settings-field">
+                <label htmlFor="tgDailyHour">{t('settings_tg_daily_hour')}</label>
+                <select
+                  id="tgDailyHour"
+                  className="settings-select"
+                  value={tgSettings.telegramDailyNotifyHour}
+                  disabled={tgSettingsSaving}
+                  onChange={(e) => void patchTelegramSettings({ telegramDailyNotifyHour: Number(e.target.value) })}
+                >
+                  {Array.from({ length: 24 }, (_, hour) => (
+                    <option key={hour} value={hour}>
+                      {String(hour).padStart(2, '0')}:00
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <label className="settings-option">
+                <input
+                  type="checkbox"
+                  checked={tgSettings.telegramQuietHoursEnabled}
+                  disabled={tgSettingsSaving}
+                  onChange={(e) => void patchTelegramSettings({ telegramQuietHoursEnabled: e.target.checked })}
+                />
+                <span>{t('settings_tg_quiet_toggle')}</span>
+              </label>
+              <div className="settings-quiet-row">
+                <div className="settings-field">
+                  <label htmlFor="tgQuietStart">{t('settings_tg_quiet_from')}</label>
+                  <select
+                    id="tgQuietStart"
+                    className="settings-select"
+                    value={tgSettings.telegramQuietStartHour}
+                    disabled={tgSettingsSaving || !tgSettings.telegramQuietHoursEnabled}
+                    onChange={(e) => void patchTelegramSettings({ telegramQuietStartHour: Number(e.target.value) })}
+                  >
+                    {Array.from({ length: 24 }, (_, hour) => (
+                      <option key={hour} value={hour}>
+                        {String(hour).padStart(2, '0')}:00
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="settings-field">
+                  <label htmlFor="tgQuietEnd">{t('settings_tg_quiet_to')}</label>
+                  <select
+                    id="tgQuietEnd"
+                    className="settings-select"
+                    value={tgSettings.telegramQuietEndHour}
+                    disabled={tgSettingsSaving || !tgSettings.telegramQuietHoursEnabled}
+                    onChange={(e) => void patchTelegramSettings({ telegramQuietEndHour: Number(e.target.value) })}
+                  >
+                    {Array.from({ length: 24 }, (_, hour) => (
+                      <option key={hour} value={hour}>
+                        {String(hour).padStart(2, '0')}:00
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <p className="settings-hint">{t('settings_tg_quiet_hint')}</p>
+            </div>
           ) : null}
         </div>
       ) : null}

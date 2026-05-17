@@ -5,6 +5,7 @@ const Comment = require('../models/Comment');
 const { analyzeEmotion } = require('../utils/aiAnalyzer');
 const { paletteForEmotion, normalizeEmotion } = require('../config/emotionPalette');
 const { notifyTelegramUser, notifyTelegramUsers } = require('../utils/telegramNotify');
+const { notifyInAppUser, notifyInAppUsers } = require('../utils/inAppNotify');
 
 function langOf(user) {
   return user?.preferredLanguage === 'en' ? 'en' : 'ru';
@@ -347,13 +348,25 @@ const createPost = async (req, res, next) => {
       currentEmotion: emotion,
       telegramActivityNotify: { $ne: false },
       banned: { $ne: true },
-    }).select('telegramDailyNotify telegramActivityNotify telegramChatId telegramUserId preferredLanguage lastTelegramActivityNotifyAt');
+    }).select(
+      'telegramDailyNotify telegramActivityNotify telegramChatId telegramUserId preferredLanguage lastTelegramActivityNotifyAt telegramTimezoneOffsetMinutes telegramQuietHoursEnabled telegramQuietStartHour telegramQuietEndHour',
+    );
     notifyTelegramUsers(
       sameMoodFollowers,
       (u) => msg(
         u,
-        `${req.user.username} сейчас чувствует то же, что и вы. Откройте Moodie, чтобы поддержать.`,
-        `${req.user.username} feels the same as you right now. Open Moodie to support them.`,
+        `💭 ${req.user.username} сейчас чувствует то же, что и вы. Откройте Moodie, чтобы поддержать.`,
+        `💭 ${req.user.username} feels the same as you right now. Open Moodie to support them.`,
+      ),
+      'same_mood',
+    );
+    notifyInAppUsers(
+      req.io,
+      sameMoodFollowers,
+      (u) => msg(
+        u,
+        `💭 ${req.user.username} сейчас чувствует то же, что и вы. Откройте Moodie, чтобы поддержать.`,
+        `💭 ${req.user.username} feels the same as you right now. Open Moodie to support them.`,
       ),
       'same_mood',
     );
@@ -434,14 +447,16 @@ const toggleReaction = async (req, res, next) => {
 
     if (existingReactionIndex === -1 && post.userId.toString() !== userId) {
       const author = await User.findById(post.userId).select(
-        'telegramDailyNotify telegramActivityNotify telegramChatId telegramUserId preferredLanguage banned lastTelegramActivityNotifyAt',
+        'telegramDailyNotify telegramActivityNotify telegramChatId telegramUserId preferredLanguage banned lastTelegramActivityNotifyAt telegramTimezoneOffsetMinutes telegramQuietHoursEnabled telegramQuietStartHour telegramQuietEndHour',
       );
       if (author && !author.banned) {
-        notifyTelegramUser(
+        const text = msg(
           author,
-          msg(author, `${req.user.username} поддержал ваш пост в Moodie.`, `${req.user.username} supported your post on Moodie.`),
-          'reaction',
+          `💜 ${req.user.username} поддержал ваш пост в Moodie.`,
+          `💜 ${req.user.username} supported your post on Moodie.`,
         );
+        notifyTelegramUser(author, text, 'reaction');
+        notifyInAppUser(req.io, author._id, text, 'reaction');
       }
     }
 
@@ -500,25 +515,24 @@ const toggleRelatable = async (req, res, next) => {
     await post.save();
     if (index === -1 && post.userId.toString() !== userId) {
       const author = await User.findById(post.userId).select(
-        'telegramDailyNotify telegramActivityNotify telegramChatId telegramUserId preferredLanguage banned lastTelegramActivityNotifyAt',
+        'telegramDailyNotify telegramActivityNotify telegramChatId telegramUserId preferredLanguage banned lastTelegramActivityNotifyAt telegramTimezoneOffsetMinutes telegramQuietHoursEnabled telegramQuietStartHour telegramQuietEndHour',
       );
       if (author && !author.banned) {
         const milestone = [3, 5, 10].includes(post.relatable) ? post.relatable : null;
-        notifyTelegramUser(
-          author,
-          milestone
-            ? msg(
-                author,
-                `Ваш пост уже почувствовали ${milestone} раз. Вы не одни.`,
-                `Your post has been felt ${milestone} times. You are not alone.`,
-              )
-            : msg(
-                author,
-                `${req.user.username} тоже почувствовал ваш пост в Moodie.`,
-                `${req.user.username} felt your post too on Moodie.`,
-              ),
-          milestone ? 'relatable_milestone' : 'relatable',
-        );
+        const type = milestone ? 'relatable_milestone' : 'relatable';
+        const text = milestone
+          ? msg(
+              author,
+              `✨ Ваш пост уже почувствовали ${milestone} раз. Вы не одни.`,
+              `✨ Your post has been felt ${milestone} times. You are not alone.`,
+            )
+          : msg(
+              author,
+              `🤝 ${req.user.username} тоже почувствовал ваш пост в Moodie.`,
+              `🤝 ${req.user.username} felt your post too on Moodie.`,
+            );
+        notifyTelegramUser(author, text, type);
+        notifyInAppUser(req.io, author._id, text, type);
       }
     }
     res.json({ relatable: post.relatable, relatableBy: post.relatableBy });

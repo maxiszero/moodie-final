@@ -6,6 +6,7 @@ import { useSession } from '../state/SessionContext'
 import { t } from '../i18n/i18n'
 import { storageKeys } from '../config/storage'
 import { isTelegramMiniApp } from '../telegram/webApp'
+import { openTelegramMiniApp } from '../telegram/deepLink'
 import { useToast } from '../ui/toastProvider'
 
 export function AuthPage() {
@@ -30,6 +31,31 @@ export function AuthPage() {
     if (loc.pathname === '/register') setMode('register')
     else setMode('login')
   }, [loc.pathname])
+
+  const handleTelegramAuth = () => {
+    if (!isTelegramMiniApp()) {
+      if (!openTelegramMiniApp()) {
+        showToast(t('auth_tg_bot_not_configured'))
+      }
+      return
+    }
+
+    setTgBusy(true)
+    void (async () => {
+      try {
+        await s.telegramLogin()
+        nav('/', { replace: true })
+      } catch (e) {
+        const err = e as ApiError
+        if (err.status === 404) showToast(t('auth_tg_not_linked'))
+        else if (err.status === 503) showToast(t('settings_tg_server'))
+        else if (err.message) showToast(err.message)
+        else showToast(t('auth_tg_no_initdata'))
+      } finally {
+        setTgBusy(false)
+      }
+    })()
+  }
 
   return (
     <>
@@ -118,32 +144,14 @@ export function AuthPage() {
           {busy ? t('login_processing') : t('login_btn')}
         </button>
 
-        {isTelegramMiniApp() ? (
-          <button
-            type="button"
-            className="auth-btn btn-secondary auth-btn--telegram"
-            disabled={tgBusy || busy}
-            onClick={() => {
-              setTgBusy(true)
-              void (async () => {
-                try {
-                  await s.telegramLogin()
-                  nav('/', { replace: true })
-                } catch (e) {
-                  const err = e as ApiError
-                  if (err.status === 404) showToast(t('auth_tg_not_linked'))
-                  else if (err.status === 503) showToast(t('settings_tg_server'))
-                  else if (err.message) showToast(err.message)
-                  else showToast(t('auth_tg_no_initdata'))
-                } finally {
-                  setTgBusy(false)
-                }
-              })()
-            }}
-          >
-            {tgBusy ? t('auth_tg_busy') : t('auth_tg_login')}
-          </button>
-        ) : null}
+        <button
+          type="button"
+          className="auth-btn btn-secondary auth-btn--telegram"
+          disabled={tgBusy || busy}
+          onClick={handleTelegramAuth}
+        >
+          {tgBusy ? t('auth_tg_busy') : t('auth_tg_login')}
+        </button>
 
         <div className="text-center auth-switch">
           {t('no_account')}{' '}
@@ -218,32 +226,14 @@ export function AuthPage() {
           {busy ? t('register_processing') : t('register_btn')}
         </button>
 
-        {isTelegramMiniApp() ? (
-          <button
-            type="button"
-            className="auth-btn btn-secondary auth-btn--telegram"
-            disabled={tgBusy || busy}
-            onClick={() => {
-              setTgBusy(true)
-              void (async () => {
-                try {
-                  await s.telegramLogin()
-                  nav('/', { replace: true })
-                } catch (e) {
-                  const err = e as ApiError
-                  if (err.status === 404) showToast(t('auth_tg_not_linked'))
-                  else if (err.status === 503) showToast(t('settings_tg_server'))
-                  else if (err.message) showToast(err.message)
-                  else showToast(t('auth_tg_no_initdata'))
-                } finally {
-                  setTgBusy(false)
-                }
-              })()
-            }}
-          >
-            {tgBusy ? t('auth_tg_busy') : t('auth_tg_login')}
-          </button>
-        ) : null}
+        <button
+          type="button"
+          className="auth-btn btn-secondary auth-btn--telegram"
+          disabled={tgBusy || busy}
+          onClick={handleTelegramAuth}
+        >
+          {tgBusy ? t('auth_tg_busy') : t('auth_tg_login')}
+        </button>
 
         <div className="text-center auth-switch">
           {t('have_account')}{' '}

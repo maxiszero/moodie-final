@@ -12,12 +12,16 @@ const {
   unfollowUser,
   updatePassword,
   updateSettings,
+  getTelegramSettings,
+  updateTelegramSettings,
   blockUser,
   getMoodHeatmap
 } = require('../controllers/userController');
 
 router.patch('/me/password', protect, updatePassword);
 router.patch('/me/settings', protect, updateSettings);
+router.get('/me/telegram-settings', protect, getTelegramSettings);
+router.patch('/me/telegram-settings', protect, updateTelegramSettings);
 router.get('/search', optionalAuth, searchUsers);
 router.get('/:username/followers', optionalAuth, getFollowers);
 router.get('/:username/following', optionalAuth, getFollowing);

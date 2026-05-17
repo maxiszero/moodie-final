@@ -2,7 +2,23 @@
 const User = require('../models/User');
 
 const MAX_TEXT = 600;
-const ACTIVITY_MIN_GAP_MS = 10 * 60 * 1000;
+const ACTIVITY_MIN_GAP_MS = Math.max(0, Number(process.env.TELEGRAM_ACTIVITY_NOTIFY_MIN_GAP_SEC ?? 600) || 0) * 1000;
+
+function localHourFor(user, value = new Date()) {
+  const offset = Number.isFinite(Number(user?.telegramTimezoneOffsetMinutes))
+    ? Number(user.telegramTimezoneOffsetMinutes)
+    : 0;
+  return new Date(value.getTime() - offset * 60 * 1000).getUTCHours();
+}
+
+function isQuietNow(user, value = new Date()) {
+  if (!user?.telegramQuietHoursEnabled) return false;
+  const start = Math.max(0, Math.min(23, Number(user.telegramQuietStartHour ?? 23)));
+  const end = Math.max(0, Math.min(23, Number(user.telegramQuietEndHour ?? 9)));
+  if (start === end) return false;
+  const hour = localHourFor(user, value);
+  return start < end ? hour >= start && hour < end : hour >= start || hour < end;
+}
 
 function webAppMarkup() {
   const url = String(process.env.TELEGRAM_WEB_APP_URL || '').trim();
@@ -45,7 +61,8 @@ function wantsTelegramActivity(user) {
   return Boolean(
     (user?.telegramActivityNotify !== false) &&
       (user?.telegramActivityNotify || user?.telegramDailyNotify) &&
-      (user.telegramChatId || user.telegramUserId),
+      (user.telegramChatId || user.telegramUserId) &&
+      !isQuietNow(user),
   );
 }
 

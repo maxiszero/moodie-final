@@ -286,6 +286,7 @@ const unlinkTelegram = async (req, res, next) => {
     user.telegramChatId = null;
     user.telegramDailyNotify = false;
     user.telegramActivityNotify = false;
+    user.telegramQuietHoursEnabled = false;
     user.lastTelegramActivityNotifyAt = null;
     user.lastTelegramActivityNotifyType = '';
     user.lastDailyNotifyDayKey = '';

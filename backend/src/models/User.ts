@@ -110,6 +110,34 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  telegramDailyNotifyHour: {
+    type: Number,
+    default: 8,
+    min: 0,
+    max: 23,
+  },
+  telegramTimezoneOffsetMinutes: {
+    type: Number,
+    default: 0,
+    min: -840,
+    max: 840,
+  },
+  telegramQuietHoursEnabled: {
+    type: Boolean,
+    default: false,
+  },
+  telegramQuietStartHour: {
+    type: Number,
+    default: 23,
+    min: 0,
+    max: 23,
+  },
+  telegramQuietEndHour: {
+    type: Number,
+    default: 9,
+    min: 0,
+    max: 23,
+  },
   lastTelegramActivityNotifyAt: {
     type: Date,
     default: null,

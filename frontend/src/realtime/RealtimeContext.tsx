@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import type { Post } from '../types'
+import type { AppNotification, Post } from '../types'
 import { getSocket } from './socket'
 import { t } from '../i18n/i18n'
 import { tryBrowserNotifyDaily } from '../ui/dailyNotifications'
+import { useSession } from '../state/SessionContext'
+import { useToast } from '../ui/toastProvider'
 
 type RealtimeValue = {
   onlineCount: number | null
@@ -16,6 +18,8 @@ type RealtimeValue = {
 const Ctx = createContext<RealtimeValue | null>(null)
 
 export function RealtimeProvider({ children }: { children: React.ReactNode }) {
+  const session = useSession()
+  const { showToast } = useToast()
   const [onlineCount, setOnlineCount] = useState<number | null>(null)
   const [lastNewPost, setLastNewPost] = useState<Post | null>(null)
   const [dailyRolloverKey, setDailyRolloverKey] = useState<string | null>(null)
@@ -34,19 +38,31 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       }
     }
     const onDailyAnswer = () => setDailyAnswerTick((n) => n + 1)
+    const onAppNotification = (payload: AppNotification) => {
+      if (payload?.message) showToast(payload.message, 'info')
+    }
 
     s.on('online_count', onOnline)
     s.on('new_post', onNewPost)
     s.on('daily_question_day', onDailyDay)
     s.on('daily_answer', onDailyAnswer)
+    s.on('app_notification', onAppNotification)
 
     return () => {
       s.off('online_count', onOnline)
       s.off('new_post', onNewPost)
       s.off('daily_question_day', onDailyDay)
       s.off('daily_answer', onDailyAnswer)
+      s.off('app_notification', onAppNotification)
     }
-  }, [])
+  }, [showToast])
+
+  useEffect(() => {
+    const s = getSocket()
+    if (session.token) {
+      s.emit('auth_user', session.token)
+    }
+  }, [session.token])
 
   const value = useMemo(
     () => ({ onlineCount, lastNewPost, dailyRolloverKey, dailyAnswerTick }),

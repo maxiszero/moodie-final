@@ -1891,6 +1891,25 @@
 
         .settings-option input { width: auto; }
 
+        .settings-tg-panel {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .settings-quiet-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            max-width: 420px;
+        }
+
+        @media (max-width: 520px) {
+            .settings-quiet-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
         .settings-select {
             width: 100%;
             max-width: 280px;
@@ -1981,6 +2000,58 @@
             font-size: 0.82rem;
             line-height: 1.4;
             font-style: italic;
+        }
+
+        .profile-ai-weekly--card {
+            width: min(100%, 480px);
+            padding: 12px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            background: rgba(var(--accent-rgb), 0.06);
+        }
+
+        .profile-ai-weekly-list {
+            margin: 0;
+            padding-left: 18px;
+            text-align: left;
+            color: var(--text-primary);
+            font-size: 0.86rem;
+            line-height: 1.45;
+        }
+
+        .profile-ai-weekly-list li + li {
+            margin-top: 6px;
+        }
+
+        .profile-badges {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 12px;
+            max-width: 520px;
+        }
+
+        .profile-badge {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            background: rgba(var(--accent-rgb), 0.08);
+            border: 1px solid rgba(var(--accent-rgb), 0.18);
+        }
+
+        .profile-badge--gold {
+            background: rgba(245, 158, 11, 0.13);
+            border-color: rgba(245, 158, 11, 0.32);
+        }
+
+        .profile-badge--silver {
+            background: rgba(148, 163, 184, 0.14);
+            border-color: rgba(148, 163, 184, 0.32);
         }
 
         .settings-hint {
@@ -4514,6 +4585,53 @@
             scrollbar-width: none;
         }
         .heatmap-container::-webkit-scrollbar { display: none; }
+
+        .daily-history-card {
+            margin: 0 0 24px;
+            padding: 16px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            background: var(--card-bg);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .daily-history-card__title {
+            font-weight: 800;
+            margin-bottom: 12px;
+            letter-spacing: -0.02em;
+        }
+
+        .daily-history-card__list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .daily-history-card__item {
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .daily-history-card__date {
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .daily-history-card__question {
+            font-weight: 700;
+            line-height: 1.35;
+            margin-bottom: 6px;
+        }
+
+        .daily-history-card__answer,
+        .daily-history-card__empty {
+            margin: 0;
+            color: var(--text-secondary);
+            line-height: 1.45;
+        }
         
         .heatmap-title {
             font-size: 0.85rem;

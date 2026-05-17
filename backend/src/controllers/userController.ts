@@ -2,8 +2,10 @@
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const Post = require('../models/Post');
+const DailyAnswer = require('../models/DailyAnswer');
 const { summarizeWeeklyMood } = require('../utils/aiAnalyzer');
 const { notifyTelegramUser } = require('../utils/telegramNotify');
+const { notifyInAppUser } = require('../utils/inAppNotify');
 
 const publicUserFields =
   'username currentEmotion currentEmoji currentColor currentColor2 currentColor3 createdAt';
@@ -13,6 +15,47 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 function langOf(user) {
   return user?.preferredLanguage === 'en' ? 'en' : 'ru';
+}
+
+function clampHour(value, fallback) {
+  const n = Number(value);
+  if (!Number.isInteger(n)) return fallback;
+  return Math.max(0, Math.min(23, n));
+}
+
+function telegramSettingsPayload(user) {
+  return {
+    telegramLinked: user.telegramUserId != null,
+    telegramDailyNotify: Boolean(user.telegramDailyNotify),
+    telegramActivityNotify: user.telegramActivityNotify !== false,
+    telegramDailyNotifyHour: clampHour(user.telegramDailyNotifyHour, 8),
+    telegramTimezoneOffsetMinutes: Number.isFinite(Number(user.telegramTimezoneOffsetMinutes))
+      ? Number(user.telegramTimezoneOffsetMinutes)
+      : 0,
+    telegramQuietHoursEnabled: Boolean(user.telegramQuietHoursEnabled),
+    telegramQuietStartHour: clampHour(user.telegramQuietStartHour, 23),
+    telegramQuietEndHour: clampHour(user.telegramQuietEndHour, 9),
+  };
+}
+
+async function profileBadges(user, posts, supportReceived) {
+  const userId = user._id;
+  const now = Date.now();
+  const accountAgeDays = user.createdAt ? Math.floor((now - new Date(user.createdAt).getTime()) / (24 * 60 * 60 * 1000)) : 0;
+  const activeDays = new Set((posts || []).map((p) => new Date(p.createdAt).toISOString().slice(0, 10))).size;
+  const supportGiven = await Post.countDocuments({
+    userId: { $ne: userId },
+    $or: [
+      { relatableBy: userId },
+      { reactions: { $elemMatch: { userId } } },
+    ],
+  });
+  const out = [];
+  if ((posts || []).length > 0) out.push({ id: 'first_post', level: 'bronze' });
+  if (accountAgeDays >= 7 || activeDays >= 7) out.push({ id: 'seven_days', level: 'silver' });
+  if (supportGiven >= 10) out.push({ id: 'supporter_10', level: 'gold' });
+  if (supportReceived >= 5) out.push({ id: 'supported_5', level: 'gold' });
+  return out;
 }
 
 function validateNewPassword(password) {
@@ -104,13 +147,27 @@ const getUserByUsername = async (req, res, next) => {
       userFollowing = me.following.map(id => id.toString());
     }
 
-    const [posts, likesAgg, followersCount, weeklyAiSummary] = await Promise.all([
+    const [posts, likesAgg, supportAgg, followersCount, weeklyAiSummary] = await Promise.all([
       Post.find({ userId: user._id })
         .sort({ createdAt: -1 })
         .populate('userId', 'username currentEmotion currentEmoji currentColor currentColor2 currentColor3'),
       Post.aggregate([
         { $match: { userId: user._id } },
         { $group: { _id: null, total: { $sum: '$likes' } } }
+      ]),
+      Post.aggregate([
+        { $match: { userId: user._id } },
+        {
+          $project: {
+            support: {
+              $add: [
+                { $size: { $ifNull: ['$relatableBy', []] } },
+                { $size: { $ifNull: ['$reactions', []] } },
+              ],
+            },
+          },
+        },
+        { $group: { _id: null, total: { $sum: '$support' } } },
       ]),
       User.countDocuments({ following: user._id }),
       resolveWeeklyAiSummary(user)
@@ -124,7 +181,9 @@ const getUserByUsername = async (req, res, next) => {
     });
 
     const totalLikesReceived = likesAgg[0]?.total ?? 0;
+    const totalSupportReceived = supportAgg[0]?.total ?? 0;
     const followingCount = user.following?.length ?? 0;
+    const badges = await profileBadges(user, posts, totalSupportReceived);
 
     let isFollowing = false;
     if (viewerId && user._id.toString() !== viewerId) {
@@ -147,6 +206,8 @@ const getUserByUsername = async (req, res, next) => {
       followersCount,
       followingCount,
       totalLikesReceived,
+      totalSupportReceived,
+      badges,
       isFollowing
     });
   } catch (error) {
@@ -218,13 +279,11 @@ const followUser = async (req, res, next) => {
     me.following.push(target._id);
     await me.save();
 
-    notifyTelegramUser(
-      target,
-      langOf(target) === 'en'
-        ? `${me.username} followed you on Moodie.`
-        : `${me.username} подписался на вас в Moodie.`,
-      'follow',
-    );
+    const followText = langOf(target) === 'en'
+      ? `👋 ${me.username} followed you on Moodie.`
+      : `👋 ${me.username} подписался на вас в Moodie.`;
+    notifyTelegramUser(target, followText, 'follow');
+    notifyInAppUser(req.io, target._id, followText, 'follow');
 
     const followersCount = await User.countDocuments({ following: target._id });
     res.json({ message: 'Followed', isFollowing: true, followersCount });
@@ -311,6 +370,53 @@ const updateSettings = async (req, res, next) => {
   }
 };
 
+const getTelegramSettings = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id).select(
+      'telegramUserId telegramDailyNotify telegramActivityNotify telegramDailyNotifyHour telegramTimezoneOffsetMinutes telegramQuietHoursEnabled telegramQuietStartHour telegramQuietEndHour',
+    );
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(telegramSettingsPayload(user));
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateTelegramSettings = async (req, res, next) => {
+  try {
+    const updates = {};
+    if (typeof req.body?.telegramDailyNotify === 'boolean') updates.telegramDailyNotify = req.body.telegramDailyNotify;
+    if (typeof req.body?.telegramActivityNotify === 'boolean') updates.telegramActivityNotify = req.body.telegramActivityNotify;
+    if (req.body?.telegramDailyNotifyHour !== undefined) {
+      updates.telegramDailyNotifyHour = clampHour(req.body.telegramDailyNotifyHour, 8);
+    }
+    if (typeof req.body?.telegramQuietHoursEnabled === 'boolean') {
+      updates.telegramQuietHoursEnabled = req.body.telegramQuietHoursEnabled;
+    }
+    if (req.body?.telegramQuietStartHour !== undefined) {
+      updates.telegramQuietStartHour = clampHour(req.body.telegramQuietStartHour, 23);
+    }
+    if (req.body?.telegramQuietEndHour !== undefined) {
+      updates.telegramQuietEndHour = clampHour(req.body.telegramQuietEndHour, 9);
+    }
+    if (req.body?.telegramTimezoneOffsetMinutes !== undefined) {
+      const tz = Number(req.body.telegramTimezoneOffsetMinutes);
+      if (Number.isFinite(tz)) updates.telegramTimezoneOffsetMinutes = Math.max(-840, Math.min(840, Math.round(tz)));
+    }
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: 'No valid Telegram settings provided' });
+    }
+
+    const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true }).select(
+      'telegramUserId telegramDailyNotify telegramActivityNotify telegramDailyNotifyHour telegramTimezoneOffsetMinutes telegramQuietHoursEnabled telegramQuietStartHour telegramQuietEndHour',
+    );
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(telegramSettingsPayload(user));
+  } catch (error) {
+    next(error);
+  }
+};
+
 const blockUser = async (req, res, next) => {
   try {
     const target = await User.findOne({ username: req.params.username });
@@ -385,6 +491,8 @@ module.exports = {
   unfollowUser,
   updatePassword,
   updateSettings,
+  getTelegramSettings,
+  updateTelegramSettings,
   blockUser,
   getMoodHeatmap
 };

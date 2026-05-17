@@ -83,20 +83,72 @@ def _chat_id_for_delivery(user: dict[str, Any], fallback_chat_id: int) -> int:
     return int(fallback_chat_id)
 
 
+def _clamped_hour(value: Any, fallback: int) -> int:
+    try:
+        hour = int(value)
+    except (TypeError, ValueError):
+        return fallback
+    return max(0, min(23, hour))
+
+
+def _timezone_offset_minutes(user: dict[str, Any]) -> int:
+    try:
+        offset = int(user.get("telegramTimezoneOffsetMinutes", 0))
+    except (TypeError, ValueError):
+        offset = 0
+    return max(-840, min(840, offset))
+
+
+def _local_now(user: dict[str, Any], value: datetime | None = None) -> datetime:
+    now = value or datetime.now(timezone.utc)
+    return now - timedelta(minutes=_timezone_offset_minutes(user))
+
+
+def _local_day_key(user: dict[str, Any], value: datetime | None = None) -> str:
+    return _local_now(user, value).date().isoformat()
+
+
+def _in_quiet_hours(user: dict[str, Any], value: datetime | None = None) -> bool:
+    if not user.get("telegramQuietHoursEnabled"):
+        return False
+    start = _clamped_hour(user.get("telegramQuietStartHour"), 23)
+    end = _clamped_hour(user.get("telegramQuietEndHour"), 9)
+    if start == end:
+        return False
+    hour = _local_now(user, value).hour
+    return start <= hour < end if start < end else hour >= start or hour < end
+
+
+def _daily_due_now(user: dict[str, Any], value: datetime | None = None) -> bool:
+    now = value or datetime.now(timezone.utc)
+    if _in_quiet_hours(user, now):
+        return False
+    hour = _clamped_hour(user.get("telegramDailyNotifyHour"), settings.telegram_daily_notify_utc_hour)
+    return _local_now(user, now).hour == hour
+
+
 def _notify_status_text(user: dict[str, Any], lang: str) -> str:
     daily = bool(user.get("telegramDailyNotify"))
     activity = user.get("telegramActivityNotify") is not False and bool(user.get("telegramChatId") or user.get("telegramUserId"))
+    hour = _clamped_hour(user.get("telegramDailyNotifyHour"), settings.telegram_daily_notify_utc_hour)
+    quiet = bool(user.get("telegramQuietHoursEnabled"))
+    q_start = _clamped_hour(user.get("telegramQuietStartHour"), 23)
+    q_end = _clamped_hour(user.get("telegramQuietEndHour"), 9)
     if lang == "en":
         return (
-            "Notification settings\n\n"
-            f"Daily question: {'on' if daily else 'off'}\n"
-            f"Activity: {'on' if activity else 'off'}\n\n"
+            "🔔 Notification settings\n\n"
+            f"🌤 Daily question: {'on' if daily else 'off'}\n"
+            f"⏰ Daily time: {hour:02d}:00 local\n"
+            f"💬 Activity: {'on' if activity else 'off'}\n"
+            f"🌙 Quiet hours: {f'{q_start:02d}:00–{q_end:02d}:00' if quiet else 'off'}\n\n"
             "Use /notify daily on|off or /notify activity on|off."
         )
     return (
-        "Настройки уведомлений\n\n"
-        f"Вопрос дня: {'вкл' if daily else 'выкл'}\n"
-        f"Активность: {'вкл' if activity else 'выкл'}\n\n"
+        "🔔 Настройки уведомлений\n\n"
+        f"🌤 Вопрос дня: {'вкл' if daily else 'выкл'}\n"
+        f"⏰ Время вопроса: {hour:02d}:00 локально\n"
+        f"💬 Активность: {'вкл' if activity else 'выкл'}\n"
+        f"🌙 Тихие часы: {f'{q_start:02d}:00–{q_end:02d}:00' if quiet else 'выкл'}\n\n"
         "Команды: /notify daily on|off или /notify activity on|off."
     )
 
@@ -210,16 +262,16 @@ class TelegramBotRunner:
         if cmd == "start":
             if lang == "en":
                 await reply(
-                    "Hi! I’m the Moodie bot — open the mini app to post, read the feed, "
+                    "👋 Hi! I’m the Moodie bot — open the mini app to post, read the feed, "
                     "and answer the daily question.\n\n"
-                    "Use /help for commands. Turn on a daily reminder with /notify on "
+                    "✨ Use /help for commands. Turn on a daily reminder with /notify on "
                     "(requires a linked Moodie account).",
                 )
             else:
                 await reply(
-                    "Привет! Я бот Moodie — откройте мини-приложение, чтобы постить, "
+                    "👋 Привет! Я бот Moodie — откройте мини-приложение, чтобы постить, "
                     "читать ленту и отвечать на вопрос дня.\n\n"
-                    "Команды: /help. Ежедневное напоминание: /notify on "
+                    "✨ Команды: /help. Ежедневное напоминание: /notify on "
                     "(нужен привязанный аккаунт Moodie).",
                 )
             return
@@ -227,6 +279,7 @@ class TelegramBotRunner:
         if cmd == "help":
             if lang == "en":
                 await reply(
+                    "🧭 Commands\n\n"
                     "/start — intro\n"
                     "/app — open Moodie\n"
                     "/today — today’s reflection question + Open button\n"
@@ -238,6 +291,7 @@ class TelegramBotRunner:
                 )
             else:
                 await reply(
+                    "🧭 Команды\n\n"
                     "/start — знакомство\n"
                     "/app — открыть Moodie\n"
                     "/today — вопрос дня + кнопка «Открыть»\n"
@@ -251,9 +305,9 @@ class TelegramBotRunner:
 
         if cmd == "app":
             if lang == "en":
-                await reply("Open Moodie:", with_app=True)
+                await reply("🚀 Open Moodie:", with_app=True)
             else:
-                await reply("Откройте Moodie:", with_app=True)
+                await reply("🚀 Откройте Moodie:", with_app=True)
             return
 
         if cmd == "today":
@@ -261,33 +315,33 @@ class TelegramBotRunner:
             bucket = get_mood_bucket((user or {}).get("currentEmotion"))
             question = pick_question(day_key, bucket, lang)
             if lang == "en":
-                line = f"Today's question\n\n{question}"
+                line = f"🌤 Today's question\n\n{question}"
             else:
-                line = f"Вопрос дня\n\n{question}"
+                line = f"🌤 Вопрос дня\n\n{question}"
             await self.send_message(client, int(chat_id), line, reply_markup=_settings_markup(user))
             return
 
         if cmd == "me":
             if not user:
                 await reply(
-                    "Telegram is not linked to a Moodie account." if lang == "en" else "Telegram не привязан к аккаунту Moodie.",
+                    "🔗 Telegram is not linked to a Moodie account." if lang == "en" else "🔗 Telegram не привязан к аккаунту Moodie.",
                     with_app=True,
                 )
                 return
             username = user.get("username") or "Moodie"
             emotion = user.get("currentEmotion") or "neutral"
             if lang == "en":
-                await reply(f"Linked account: {username}\nCurrent mood: {emotion}", with_app=True)
+                await reply(f"👤 Linked account: {username}\n💭 Current mood: {emotion}", with_app=True)
             else:
-                await reply(f"Привязанный аккаунт: {username}\nТекущее состояние: {emotion}", with_app=True)
+                await reply(f"👤 Привязанный аккаунт: {username}\n💭 Текущее состояние: {emotion}", with_app=True)
             return
 
         if cmd == "settings":
             if not user:
                 await reply(
-                    "Link Telegram to your Moodie account first: open the mini app → Settings → Telegram."
+                    "🔗 Link Telegram to your Moodie account first: open the mini app → Settings → Telegram."
                     if lang == "en"
-                    else "Сначала привяжите Telegram в приложении: мини-приложение → Настройки → Telegram.",
+                    else "🔗 Сначала привяжите Telegram в приложении: мини-приложение → Настройки → Telegram.",
                     with_app=True,
                 )
                 return
@@ -298,20 +352,20 @@ class TelegramBotRunner:
             if not user:
                 if lang == "en":
                     await reply(
-                        "Link Telegram to your Moodie account first: open the mini app → Settings → Telegram.",
+                        "🔗 Link Telegram to your Moodie account first: open the mini app → Settings → Telegram.",
                         with_app=True,
                     )
                 else:
                     await reply(
-                        "Сначала привяжите Telegram в приложении: мини-приложение → Настройки → Telegram.",
+                        "🔗 Сначала привяжите Telegram в приложении: мини-приложение → Настройки → Telegram.",
                         with_app=True,
                     )
                 return
             if user.get("banned"):
                 if lang == "en":
-                    await reply("This account is restricted.")
+                    await reply("⛔ This account is restricted.")
                 else:
-                    await reply("Этот аккаунт ограничен.")
+                    await reply("⛔ Этот аккаунт ограничен.")
                 return
 
             parts = arg.split()
@@ -332,14 +386,14 @@ class TelegramBotRunner:
                     await self.send_message(
                         client,
                         int(chat_id),
-                        "Notifications updated.\n\n" + _notify_status_text({**user, **fields}, lang),
+                        "✅ Notifications updated.\n\n" + _notify_status_text({**user, **fields}, lang),
                         reply_markup=_settings_markup({**user, **fields}),
                     )
                 else:
                     await self.send_message(
                         client,
                         int(chat_id),
-                        "Уведомления обновлены.\n\n" + _notify_status_text({**user, **fields}, lang),
+                        "✅ Уведомления обновлены.\n\n" + _notify_status_text({**user, **fields}, lang),
                         reply_markup=_settings_markup({**user, **fields}),
                     )
                 return
@@ -358,14 +412,14 @@ class TelegramBotRunner:
                     await self.send_message(
                         client,
                         int(chat_id),
-                        "Notifications updated.\n\n" + _notify_status_text({**user, **fields}, lang),
+                        "✅ Notifications updated.\n\n" + _notify_status_text({**user, **fields}, lang),
                         reply_markup=_settings_markup({**user, **fields}),
                     )
                 else:
                     await self.send_message(
                         client,
                         int(chat_id),
-                        "Уведомления обновлены.\n\n" + _notify_status_text({**user, **fields}, lang),
+                        "✅ Уведомления обновлены.\n\n" + _notify_status_text({**user, **fields}, lang),
                         reply_markup=_settings_markup({**user, **fields}),
                     )
                 return
@@ -376,8 +430,9 @@ class TelegramBotRunner:
 
 async def run_daily_notifies(runner: TelegramBotRunner) -> None:
     db = get_database()
-    day_key = utc_day_key()
+    question_day_key = utc_day_key()
     markup = _web_app_markup()
+    now = datetime.now(timezone.utc)
     async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=15.0)) as client:
         cursor = db.users.find(
             {
@@ -387,6 +442,9 @@ async def run_daily_notifies(runner: TelegramBotRunner) -> None:
             }
         )
         async for user in cursor:
+            if not _daily_due_now(user, now):
+                continue
+            notify_day_key = _local_day_key(user, now)
             claim = await db.users.update_one(
                 {
                     "_id": user["_id"],
@@ -394,30 +452,30 @@ async def run_daily_notifies(runner: TelegramBotRunner) -> None:
                     "banned": {"$ne": True},
                     "$or": [
                         {"lastDailyNotifyDayKey": {"$exists": False}},
-                        {"lastDailyNotifyDayKey": {"$ne": day_key}},
+                        {"lastDailyNotifyDayKey": {"$ne": notify_day_key}},
                     ],
                 },
-                {"$set": {"lastDailyNotifyDayKey": day_key, "updatedAt": datetime.now(timezone.utc)}},
+                {"$set": {"lastDailyNotifyDayKey": notify_day_key, "updatedAt": datetime.now(timezone.utc)}},
             )
             if claim.modified_count == 0:
                 continue
 
             lang = "en" if user.get("preferredLanguage") == "en" else "ru"
             bucket = get_mood_bucket(user.get("currentEmotion"))
-            question = pick_question(day_key, bucket, lang)
+            question = pick_question(question_day_key, bucket, lang)
             chat_id = _chat_id_for_delivery(user, int(user["telegramUserId"]))
             recent_post = await db.posts.find_one(
                 {"userId": user["_id"], "createdAt": {"$gte": datetime.now(timezone.utc) - timedelta(days=3)}},
                 {"_id": 1},
             )
             if lang == "en":
-                text = f"Today's reflection question\n\n{question}"
+                text = f"🌤 Today's reflection question\n\n{question}"
                 if not recent_post:
-                    text = f"Moodie misses you. How are you today?\n\n{text}"
+                    text = f"💙 Moodie misses you. How are you today?\n\n{text}"
             else:
-                text = f"Вопрос дня\n\n{question}"
+                text = f"🌤 Вопрос дня\n\n{question}"
                 if not recent_post:
-                    text = f"Moodie скучает. Как вы сегодня?\n\n{text}"
+                    text = f"💙 Moodie скучает. Как вы сегодня?\n\n{text}"
 
             try:
                 await runner.send_message(
@@ -482,19 +540,12 @@ async def daily_notify_scheduler() -> None:
     if not settings.telegram_bot_token.strip():
         return
     runner = TelegramBotRunner()
-    hour = settings.telegram_daily_notify_utc_hour % 24
     while True:
-        now = datetime.now(timezone.utc)
-        target = now.replace(hour=hour, minute=0, second=0, microsecond=0)
-        if target <= now:
-            target += timedelta(days=1)
-        wait_s = (target - now).total_seconds()
-        logger.info("Daily Telegram reminders next run at %s (in %.0fs)", target.isoformat(), wait_s)
-        await asyncio.sleep(wait_s)
         try:
             await run_daily_notifies(runner)
         except Exception:
             logger.exception("run_daily_notifies failed")
+        await asyncio.sleep(300)
 
 
 def start_telegram_background_tasks() -> list[asyncio.Task]:
