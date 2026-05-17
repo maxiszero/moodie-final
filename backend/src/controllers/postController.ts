@@ -2,7 +2,7 @@
 const Post = require('../models/Post');
 const User = require('../models/User');
 const Comment = require('../models/Comment');
-const { analyzeEmotion, pickMoodSong } = require('../utils/aiAnalyzer');
+const { analyzeEmotion, pickMoodSong, normalizeClientMoodSong } = require('../utils/aiAnalyzer');
 const { paletteForEmotion, normalizeEmotion } = require('../config/emotionPalette');
 const { notifyTelegramUser, notifyTelegramUsers } = require('../utils/telegramNotify');
 const { notifyInAppUser, notifyInAppUsers } = require('../utils/inAppNotify');
@@ -278,7 +278,7 @@ const getMoodStats = async (req, res, next) => {
 // @access  Private
 const createPost = async (req, res, next) => {
   try {
-    const { text } = req.body;
+    const { text, moodSong: clientMoodSongRaw } = req.body;
 
     if (!text) {
       return res.status(400).json({ message: 'Please provide text for the post' });
@@ -307,7 +307,10 @@ const createPost = async (req, res, next) => {
     }
 
     const fq = typeof feedQuality === 'number' && !Number.isNaN(feedQuality) ? feedQuality : 65;
-    const moodSong = await pickMoodSong({ emotion, text, lang: req.user?.preferredLanguage || 'ru' });
+    let moodSong = normalizeClientMoodSong(clientMoodSongRaw);
+    if (!moodSong) {
+      moodSong = await pickMoodSong({ emotion, text, lang: req.user?.preferredLanguage || 'ru' });
+    }
 
     const post = await Post.create({
       text,

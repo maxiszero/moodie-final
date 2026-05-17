@@ -78,6 +78,24 @@ def test_mood_song_payload_uses_profile_field_names() -> None:
     assert payload["moodSongPreviewUrl"].endswith(".m4a")
 
 
+def test_mood_suggest_requires_text() -> None:
+    client = TestClient(create_app())
+
+    r = client.post("/api/mood-song/suggest", json={"text": "  "})
+
+    assert r.status_code == 400
+    assert r.json().get("message") == "Text required"
+
+
+def test_mood_suggest_rejects_links() -> None:
+    client = TestClient(create_app())
+
+    r = client.post("/api/mood-song/suggest", json={"text": "see https://evil.test"})
+
+    assert r.status_code == 400
+    assert r.json().get("message") == "Links are not allowed"
+
+
 def test_telegram_daily_due_uses_user_local_hour() -> None:
     user = {
         "telegramDailyNotifyHour": 17,

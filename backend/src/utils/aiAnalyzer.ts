@@ -26,9 +26,12 @@ function pythonMoodServiceEnabled() {
   return String(process.env.DISABLE_PYTHON_MOOD_SERVICE || '').toLowerCase() !== 'true';
 }
 
-async function postPythonMood(path, body) {
+async function postPythonMood(path, body, timeoutOverride) {
   if (!pythonMoodServiceEnabled()) return null;
-  const timeoutMs = parseInt(process.env.PYTHON_MOOD_SERVICE_TIMEOUT_MS, 10) || 2500;
+  const timeoutMs =
+    typeof timeoutOverride === 'number' && timeoutOverride > 0
+      ? timeoutOverride
+      : parseInt(process.env.PYTHON_MOOD_SERVICE_TIMEOUT_MS, 10) || 2500;
   try {
     const res = await fetch(`${pythonMoodServiceUrl()}${path}`, {
       method: 'POST',
@@ -74,6 +77,64 @@ function coerceMoodSong(data) {
     moodSongArtworkUrl: typeof song.moodSongArtworkUrl === 'string' ? song.moodSongArtworkUrl.trim() : '',
     moodSongSource: typeof song.moodSongSource === 'string' ? song.moodSongSource.trim() : 'itunes',
   };
+}
+
+/** Accept only Apple/iTunes preview and store URLs (defense in depth for stored user fields). */
+function assertSafeMoodSongUrls(song) {
+  if (!song) return null;
+  try {
+    const p = new URL(song.moodSongPreviewUrl);
+    if (p.protocol !== 'https:') return null;
+    const ph = p.hostname.toLowerCase();
+    if (ph !== 'audio-ssl.itunes.apple.com' && !ph.endsWith('.itunes.apple.com')) return null;
+  } catch {
+    return null;
+  }
+  try {
+    const e = new URL(song.moodSongExternalUrl);
+    if (e.protocol !== 'https:') return null;
+    const eh = e.hostname.toLowerCase();
+    if (
+      eh !== 'music.apple.com' &&
+      eh !== 'itunes.apple.com' &&
+      !eh.endsWith('.music.apple.com') &&
+      !eh.endsWith('.itunes.apple.com')
+    ) {
+      return null;
+    }
+  } catch {
+    return null;
+  }
+  if (song.moodSongArtworkUrl) {
+    try {
+      const a = new URL(song.moodSongArtworkUrl);
+      if (a.protocol !== 'https:') return null;
+      if (!a.hostname.toLowerCase().endsWith('.mzstatic.com')) return null;
+    } catch {
+      return null;
+    }
+  }
+  return song;
+}
+
+/** Validates client-submitted mood song payload for POST /posts. */
+function normalizeClientMoodSong(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const coerced = coerceMoodSong({ song: raw });
+  if (!coerced) return null;
+  return assertSafeMoodSongUrls(coerced);
+}
+
+async function suggestMoodSongs(text, limit = 5) {
+  const cap = Math.min(8, Math.max(1, limit));
+  const data = await postPythonMood('/api/mood-song/suggest', { text, limit: cap }, 18_000);
+  if (!data || typeof data !== 'object') return { emotion: null, songs: [] };
+  const emotion = typeof data.emotion === 'string' ? data.emotion.toLowerCase() : null;
+  const rawSongs = Array.isArray(data.songs) ? data.songs : [];
+  const songs = rawSongs
+    .map((s) => assertSafeMoodSongUrls(coerceMoodSong({ song: s })))
+    .filter(Boolean);
+  return { emotion, songs };
 }
 
 /**
@@ -490,7 +551,13 @@ const summarizeWeeklyMood = async (posts, lang) => {
 
 const pickMoodSong = async ({ emotion, text, lang }) => {
   const data = await postPythonMood('/api/mood-song/pick', { emotion, text, lang });
-  return coerceMoodSong(data);
+  return assertSafeMoodSongUrls(coerceMoodSong(data));
 };
 
-module.exports = { analyzeEmotion, summarizeWeeklyMood, pickMoodSong };
+module.exports = {
+  analyzeEmotion,
+  summarizeWeeklyMood,
+  pickMoodSong,
+  suggestMoodSongs,
+  normalizeClientMoodSong,
+};

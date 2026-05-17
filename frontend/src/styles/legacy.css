@@ -1818,6 +1818,126 @@
             min-height: 0;
         }
 
+        .mood-song-pick-modal {
+            width: min(100%, 420px);
+            max-height: min(80vh, 560px);
+            display: flex;
+            flex-direction: column;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+        }
+
+        .mood-song-pick-modal__head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 14px 14px 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .mood-song-pick-modal__titles {
+            min-width: 0;
+        }
+
+        .mood-song-pick-modal__titles h2 {
+            margin: 0;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .mood-song-pick-modal__titles p {
+            margin: 6px 0 0;
+            font-size: 0.82rem;
+            line-height: 1.35;
+            color: var(--text-secondary);
+        }
+
+        .mood-song-pick-modal__body {
+            padding: 10px 12px 14px;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .mood-song-pick-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 8px;
+            border-radius: var(--radius-md, 10px);
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: background 0.15s ease, border-color 0.15s ease;
+        }
+
+        .mood-song-pick-row:hover {
+            background: var(--surface-tint, rgba(99, 102, 241, 0.06));
+        }
+
+        .mood-song-pick-row.is-selected {
+            border-color: rgba(99, 102, 241, 0.45);
+            background: rgba(99, 102, 241, 0.07);
+        }
+
+        .mood-song-pick-row input {
+            margin-top: 4px;
+            flex-shrink: 0;
+        }
+
+        .mood-song-pick-row__main {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .mood-song-pick-row__title {
+            font-size: 0.88rem;
+            font-weight: 650;
+            color: var(--text-primary);
+            line-height: 1.25;
+        }
+
+        .mood-song-pick-row__artist {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .mood-song-pick-preview-btn {
+            flex-shrink: 0;
+            padding: 6px 10px;
+            font-size: 0.75rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            color: var(--text-primary);
+            cursor: pointer;
+            font: inherit;
+            transition: border-color 0.15s ease, background 0.15s ease;
+        }
+
+        .mood-song-pick-preview-btn:hover:not(:disabled) {
+            border-color: rgba(99, 102, 241, 0.4);
+            background: var(--surface-tint);
+        }
+
+        .mood-song-pick-modal__foot {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: flex-end;
+            padding: 12px 14px 14px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .mood-song-pick-modal__foot .btn-secondary {
+            margin-right: auto;
+        }
+
         .profile-actions {
             margin-top: 16px;
         }

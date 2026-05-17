@@ -73,6 +73,7 @@ export function createApp(context: AppContext = {}) {
   app.use('/api/users', require('./routes/users'));
   app.use('/api/admin', require('./routes/admin'));
   app.use('/api/daily-question', require('./routes/dailyQuestion'));
+  app.use('/api/mood-song', require('./routes/moodSong'));
 
   app.get('/', (_req, res) => {
     res.send('Moodie API is running...');

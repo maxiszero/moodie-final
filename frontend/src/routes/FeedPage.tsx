@@ -18,6 +18,15 @@ function textHasLink(s: string) {
   return /(https?:\/\/\S+|www\.\S+)/i.test(s)
 }
 
+type MoodSongPickPayload = {
+  moodSongTitle: string
+  moodSongArtist: string
+  moodSongPreviewUrl: string
+  moodSongExternalUrl: string
+  moodSongArtworkUrl?: string
+  moodSongSource?: string
+}
+
 type FeedPageProps = { guestLenta?: boolean }
 
 export function FeedPage({ guestLenta }: FeedPageProps) {
@@ -47,6 +56,12 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
   const [aiTipText, setAiTipText] = useState('')
   const [postBusy, setPostBusy] = useState(false)
   const [aiTipBusy, setAiTipBusy] = useState(false)
+  const [songPickOpen, setSongPickOpen] = useState(false)
+  const [songPickCandidates, setSongPickCandidates] = useState<MoodSongPickPayload[]>([])
+  const [songPickSelectedKey, setSongPickSelectedKey] = useState('')
+  const [pendingPostText, setPendingPostText] = useState('')
+  const [songPreviewPlaying, setSongPreviewPlaying] = useState<string | null>(null)
+  const songPickAudioRef = useRef<HTMLAudioElement | null>(null)
 
   const pageRef = useRef(1)
   const loadingRef = useRef(false)
@@ -179,7 +194,19 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
 
   const len = text.length
   const overLimit = len > 228
-  const canSubmit = Boolean(s.isAuthed && text.trim() && !overLimit && !textHasLink(text))
+  const canSubmit = Boolean(
+    s.isAuthed && text.trim() && !overLimit && !textHasLink(text) && !songPickOpen,
+  )
+
+  useEffect(() => {
+    if (!songPickOpen) {
+      const a = songPickAudioRef.current
+      if (a) {
+        a.pause()
+        setSongPreviewPlaying(null)
+      }
+    }
+  }, [songPickOpen])
   const myGradient = `linear-gradient(135deg, ${s.mood.color}, ${s.mood.color2}, ${s.mood.color3}, ${s.mood.color2}, ${s.mood.color})`
 
   useEffect(() => {
@@ -237,6 +264,52 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
     rt.onlineCount === null ? t('online_unknown') : t('online_count').replace('{n}', String(rt.onlineCount))
 
   const showFeedLoader = sort === 'daily' ? !dqToday : loading && posts.length === 0
+
+  const toggleSongPickPreview = (previewUrl: string) => {
+    const el = songPickAudioRef.current
+    if (!el || !previewUrl) return
+    if (songPreviewPlaying === previewUrl) {
+      el.pause()
+      setSongPreviewPlaying(null)
+      return
+    }
+    el.src = previewUrl
+    void el
+      .play()
+      .then(() => setSongPreviewPlaying(previewUrl))
+      .catch(() => setSongPreviewPlaying(null))
+  }
+
+  const closeSongPickModal = () => {
+    setSongPickOpen(false)
+    setPendingPostText('')
+    setSongPickCandidates([])
+    setSongPickSelectedKey('')
+  }
+
+  const applyPublishSuccess = async (newPost: Post) => {
+    setText('')
+    setAiTipOpen(false)
+    setAiTipText('')
+    closeSongPickModal()
+    setPosts((prev) => [newPost, ...prev.filter((x) => x._id !== newPost._id)])
+    const mood = {
+      emotion: newPost.emotion,
+      emoji: newPost.emoji,
+      color: newPost.color,
+      color2: newPost.color2 || newPost.color,
+      color3: newPost.color3 || newPost.color2 || newPost.color,
+    }
+    if (mood.emotion) localStorage.setItem('moodie_currentEmotion', String(mood.emotion))
+    if (mood.emoji) localStorage.setItem('moodie_currentEmoji', String(mood.emoji))
+    if (mood.color) localStorage.setItem('moodie_currentColor', String(mood.color))
+    if (mood.color2) localStorage.setItem('moodie_currentColor2', String(mood.color2))
+    if (mood.color3) localStorage.setItem('moodie_currentColor3', String(mood.color3))
+    setGettingStartedTaskDone('first_post')
+    showToast(t('post_published'), 'success')
+    await s.refreshMe()
+    await refetchStats()
+  }
 
   return (
     <>
@@ -356,30 +429,28 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
                 }
                 setPostBusy(true)
                 try {
-                  const newPost = await apiFetch<Post>('/posts', {
-                    method: 'POST',
-                    body: JSON.stringify({ text: content }),
-                  })
-                  setText('')
-                  setAiTipOpen(false)
-                  setAiTipText('')
-                  setPosts((prev) => [newPost, ...prev.filter((x) => x._id !== newPost._id)])
-                  const mood = {
-                    emotion: newPost.emotion,
-                    emoji: newPost.emoji,
-                    color: newPost.color,
-                    color2: newPost.color2 || newPost.color,
-                    color3: newPost.color3 || newPost.color2 || newPost.color,
+                  let suggest: { songs?: MoodSongPickPayload[] } = { songs: [] }
+                  try {
+                    suggest = await apiFetch<{ songs?: MoodSongPickPayload[] }>('/mood-song/suggest', {
+                      method: 'POST',
+                      body: JSON.stringify({ text: content, limit: 5 }),
+                    })
+                  } catch {
+                    /* Python/offline: publish without picker */
                   }
-                  if (mood.emotion) localStorage.setItem('moodie_currentEmotion', String(mood.emotion))
-                  if (mood.emoji) localStorage.setItem('moodie_currentEmoji', String(mood.emoji))
-                  if (mood.color) localStorage.setItem('moodie_currentColor', String(mood.color))
-                  if (mood.color2) localStorage.setItem('moodie_currentColor2', String(mood.color2))
-                  if (mood.color3) localStorage.setItem('moodie_currentColor3', String(mood.color3))
-                  setGettingStartedTaskDone('first_post')
-                  showToast(t('post_published'), 'success')
-                  await s.refreshMe()
-                  await refetchStats()
+                  const songs = Array.isArray(suggest.songs) ? suggest.songs : []
+                  if (songs.length === 0) {
+                    const newPost = await apiFetch<Post>('/posts', {
+                      method: 'POST',
+                      body: JSON.stringify({ text: content }),
+                    })
+                    await applyPublishSuccess(newPost)
+                    return
+                  }
+                  setPendingPostText(content)
+                  setSongPickCandidates(songs)
+                  setSongPickSelectedKey(songs[0]?.moodSongPreviewUrl || '')
+                  setSongPickOpen(true)
                 } catch (e: unknown) {
                   const msg = e && typeof e === 'object' && 'message' in e ? String((e as { message: string }).message) : 'fail'
                   showToast(msg, 'error')
@@ -493,6 +564,132 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
           </>
         ) : null}
       </div>
+
+      {songPickOpen ? (
+        <div
+          className="profile-follow-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="moodSongPickTitle"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !postBusy) closeSongPickModal()
+          }}
+        >
+          <div className="mood-song-pick-modal" onClick={(e) => e.stopPropagation()}>
+            <audio
+              ref={songPickAudioRef}
+              style={{ display: 'none' }}
+              onEnded={() => setSongPreviewPlaying(null)}
+            />
+            <div className="mood-song-pick-modal__head">
+              <div className="mood-song-pick-modal__titles">
+                <h2 id="moodSongPickTitle">{t('mood_song_pick_title')}</h2>
+                <p>{t('mood_song_pick_sub')}</p>
+              </div>
+              <button
+                type="button"
+                className="profile-follow-modal__close"
+                disabled={postBusy}
+                onClick={() => closeSongPickModal()}
+                aria-label={t('mood_song_pick_cancel')}
+              >
+                ×
+              </button>
+            </div>
+            <div className="mood-song-pick-modal__body">
+              {songPickCandidates.map((song) => {
+                const key = song.moodSongPreviewUrl
+                const selected = songPickSelectedKey === key
+                return (
+                  <label
+                    key={key}
+                    className={`mood-song-pick-row ${selected ? 'is-selected' : ''}`}
+                  >
+                    <input
+                      type="radio"
+                      name="moodSongPick"
+                      checked={selected}
+                      onChange={() => setSongPickSelectedKey(key)}
+                    />
+                    <div className="mood-song-pick-row__main">
+                      <div className="mood-song-pick-row__title">{song.moodSongTitle}</div>
+                      <div className="mood-song-pick-row__artist">{song.moodSongArtist}</div>
+                    </div>
+                    <button
+                      type="button"
+                      className="mood-song-pick-preview-btn"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        toggleSongPickPreview(key)
+                      }}
+                    >
+                      {songPreviewPlaying === key ? t('mood_song_pick_preview_stop') : t('mood_song_pick_preview')}
+                    </button>
+                  </label>
+                )
+              })}
+            </div>
+            <div className="mood-song-pick-modal__foot">
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={postBusy}
+                onClick={async () => {
+                  setPostBusy(true)
+                  try {
+                    const newPost = await apiFetch<Post>('/posts', {
+                      method: 'POST',
+                      body: JSON.stringify({ text: pendingPostText }),
+                    })
+                    await applyPublishSuccess(newPost)
+                  } catch (e: unknown) {
+                    const msg =
+                      e && typeof e === 'object' && 'message' in e
+                        ? String((e as { message: string }).message)
+                        : 'fail'
+                    showToast(msg, 'error')
+                  } finally {
+                    setPostBusy(false)
+                  }
+                }}
+              >
+                {t('mood_song_pick_skip')}
+              </button>
+              <button type="button" className="btn-secondary" disabled={postBusy} onClick={() => closeSongPickModal()}>
+                {t('mood_song_pick_cancel')}
+              </button>
+              <button
+                type="button"
+                className="auth-btn"
+                disabled={postBusy || !songPickSelectedKey}
+                onClick={async () => {
+                  const sel = songPickCandidates.find((s) => s.moodSongPreviewUrl === songPickSelectedKey)
+                  if (!sel) return
+                  setPostBusy(true)
+                  try {
+                    const newPost = await apiFetch<Post>('/posts', {
+                      method: 'POST',
+                      body: JSON.stringify({ text: pendingPostText, moodSong: sel }),
+                    })
+                    await applyPublishSuccess(newPost)
+                  } catch (e: unknown) {
+                    const msg =
+                      e && typeof e === 'object' && 'message' in e
+                        ? String((e as { message: string }).message)
+                        : 'fail'
+                    showToast(msg, 'error')
+                  } finally {
+                    setPostBusy(false)
+                  }
+                }}
+              >
+                {postBusy ? t('publishing') : t('mood_song_pick_confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="feed" id="feedContainer">
         {sort === 'daily' ? (

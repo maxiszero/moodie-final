@@ -120,6 +120,11 @@ MOOD_SONG_QUERIES: dict[str, list[str]] = {
         "Tame Impala The Less I Know The Better",
         "Frank Ocean Pink + White",
     ],
+    "confident": [
+        "Survivor Eye of the Tiger",
+        "Lizzo About Damn Time",
+        "Eminem Lose Yourself",
+    ],
 }
 
 
@@ -180,21 +185,53 @@ async def search_itunes_song(query: str, *, country: str | None = None) -> MoodS
     return None
 
 
-async def pick_mood_song(emotion: str | None, text: str = "", *, country: str | None = None) -> MoodSong | None:
+def _song_dedupe_key(song: MoodSong) -> str:
+    return f"{song.title.lower().strip()}|{song.artist.lower().strip()}"
+
+
+def _queries_for_mood_rotated(emotion: str | None, text: str) -> list[str]:
     mood = normalize_emotion(emotion)
-    first_query = query_for_mood(mood, text)
-    tried: set[str] = set()
-    for query in [first_query, *MOOD_SONG_QUERIES[mood], *MOOD_SONG_QUERIES["neutral"]]:
-        if query in tried:
-            continue
-        tried.add(query)
+    pool = list(MOOD_SONG_QUERIES[mood])
+    for q in MOOD_SONG_QUERIES["neutral"]:
+        if q not in pool:
+            pool.append(q)
+    if not pool:
+        pool = list(MOOD_SONG_QUERIES["neutral"])
+    seed = int(hashlib.sha256(f"{mood}|{text.strip().lower()}".encode("utf-8")).hexdigest()[:8], 16)
+    k = seed % len(pool)
+    return pool[k:] + pool[:k]
+
+
+async def pick_mood_song_candidates(
+    emotion: str | None,
+    text: str = "",
+    *,
+    limit: int = 5,
+    country: str | None = None,
+) -> list[MoodSong]:
+    cap = max(1, min(int(limit), 8))
+    seen: set[str] = set()
+    out: list[MoodSong] = []
+    for query in _queries_for_mood_rotated(emotion, text):
+        if len(out) >= cap:
+            break
         try:
             song = await search_itunes_song(query, country=country)
         except httpx.HTTPError:
             song = None
-        if song:
-            return song
-    return None
+        if not song:
+            continue
+        key = _song_dedupe_key(song)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(song)
+    return out
+
+
+async def pick_mood_song(emotion: str | None, text: str = "", *, country: str | None = None) -> MoodSong | None:
+    candidates = await pick_mood_song_candidates(emotion, text, limit=1, country=country)
+    return candidates[0] if candidates else None
 
 
 def song_payload(song: MoodSong | None) -> dict[str, str] | None:
