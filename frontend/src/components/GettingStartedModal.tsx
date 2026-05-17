@@ -6,14 +6,12 @@ import {
   GETTING_STARTED_TASK_IDS,
   loadGettingStartedProgress,
   isGettingStartedComplete,
-  setGettingStartedTaskDone,
   type GettingStartedProgress,
 } from '../ui/gettingStarted'
 import { t } from '../i18n/i18n'
 import { GettingStartedTaskIcon } from './GettingStartedTaskIcon'
 import { GettingStarted1fitPromo } from './GettingStarted1fitPromo'
 import { getFitRewardUrl } from '../config/fitRewardUrl'
-import { openTelegramMiniApp } from '../telegram/deepLink'
 
 export function GettingStartedModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const reduceMotion = useReducedMotion()
@@ -32,12 +30,6 @@ export function GettingStartedModal({ open, onClose }: { open: boolean; onClose:
   )
   const complete = isGettingStartedComplete(progress)
   const progressLabel = t('gs_progress').replace('{done}', String(doneCount)).replace('{total}', String(GETTING_STARTED_TASK_TOTAL))
-  const tryTelegramBot = () => {
-    if (openTelegramMiniApp()) {
-      setGettingStartedTaskDone('add_to_home')
-      setProgress(loadGettingStartedProgress())
-    }
-  }
 
   return (
     <AnimatePresence>
@@ -72,7 +64,6 @@ export function GettingStartedModal({ open, onClose }: { open: boolean; onClose:
           <TaskRow ok={progress.first_reaction} title={t('gs_task_reaction')} hint={t('gs_task_hint_reaction')} index={1} />
           <TaskRow ok={progress.first_follow} title={t('gs_task_follow')} hint={t('gs_task_hint_follow')} index={2} />
           <TaskRow ok={progress.open_profile} title={t('gs_task_profile')} hint={t('gs_task_hint_profile')} index={3} />
-          <TaskRow ok={progress.add_to_home} title={t('gs_task_a2hs')} hint={t('gs_task_hint_a2hs')} index={4} onClick={tryTelegramBot} />
         </div>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>

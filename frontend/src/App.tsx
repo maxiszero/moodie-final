@@ -9,7 +9,6 @@ import { Onboarding } from './components/Onboarding'
 import { storageKeys } from './config/storage'
 import { GettingStartedModal } from './components/GettingStartedModal'
 import { GettingStartedWidget } from './components/GettingStartedWidget'
-import { AddToHomeHint } from './components/AddToHomeHint'
 import { Seo } from './components/Seo'
 import { AppMobileNav } from './layout/AppMobileNav'
 import { prefetchFitRewardSlot } from './config/fitRewardUrl'
@@ -70,7 +69,6 @@ function FeedHome() {
       </div>
       <aside className="sidebar" id="sidebar">
         <GettingStartedWidget compactLink />
-        <AddToHomeHint />
       </aside>
     </FeedMoodProvider>
   )
@@ -84,7 +82,6 @@ function FeedLenta() {
       </div>
       <aside className="sidebar" id="sidebar">
         <GettingStartedWidget compactLink />
-        <AddToHomeHint />
       </aside>
     </FeedMoodProvider>
   )

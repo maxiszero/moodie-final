@@ -35,7 +35,6 @@ describe('gettingStarted progress', () => {
         first_reaction: true,
         first_follow: true,
         open_profile: true,
-        add_to_home: true,
       }),
     ).toBe(true)
   })

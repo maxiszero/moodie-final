@@ -6,7 +6,6 @@ import {
   GETTING_STARTED_TASK_TOTAL,
   loadGettingStartedProgress,
   isGettingStartedComplete,
-  setGettingStartedTaskDone,
   type GettingStartedProgress,
   type GettingStartedTaskId,
 } from '../ui/gettingStarted'
@@ -14,14 +13,12 @@ import { t } from '../i18n/i18n'
 import { GettingStartedTaskIcon } from './GettingStartedTaskIcon'
 import { GettingStarted1fitPromo } from './GettingStarted1fitPromo'
 import { getFitRewardUrl } from '../config/fitRewardUrl'
-import { openTelegramMiniApp } from '../telegram/deepLink'
 
 const TASK_COPY: Array<{ key: GettingStartedTaskId; i18n: string }> = [
   { key: 'first_post', i18n: 'gs_task_first_post' },
   { key: 'first_reaction', i18n: 'gs_task_reaction' },
   { key: 'first_follow', i18n: 'gs_task_follow' },
   { key: 'open_profile', i18n: 'gs_task_profile' },
-  { key: 'add_to_home', i18n: 'gs_task_a2hs' },
 ]
 
 export function GettingStartedWidget({ compactLink = false }: { compactLink?: boolean }) {
@@ -44,12 +41,6 @@ export function GettingStartedWidget({ compactLink = false }: { compactLink?: bo
   )
   const complete = isGettingStartedComplete(progress)
   const progressLabel = t('gs_progress').replace('{done}', String(doneCount)).replace('{total}', String(GETTING_STARTED_TASK_TOTAL))
-  const tryTelegramBot = () => {
-    if (openTelegramMiniApp()) {
-      setGettingStartedTaskDone('add_to_home')
-      setProgress(loadGettingStartedProgress())
-    }
-  }
 
   if (compactLink) {
     return (
@@ -104,7 +95,6 @@ export function GettingStartedWidget({ compactLink = false }: { compactLink?: bo
                 index={i}
                 stagger={stagger}
                 reduceMotion={reduceMotion}
-                onClick={key === 'add_to_home' ? tryTelegramBot : undefined}
               />
             ))}
           </motion.div>

@@ -183,6 +183,11 @@ export function ProfilePage() {
   const [userListTab, setUserListTab] = useState<'followers' | 'following'>('followers')
 
   useEffect(() => {
+    document.body.classList.add('profile-bleed-header')
+    return () => document.body.classList.remove('profile-bleed-header')
+  }, [])
+
+  useEffect(() => {
     const mq = window.matchMedia('(max-width: 640px)')
     const f = () => setIsNarrow(mq.matches)
     f()
