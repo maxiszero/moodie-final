@@ -34,6 +34,7 @@ class Settings:
     telegram_bot_short_name: str = os.getenv("TELEGRAM_BOT_SHORT_NAME", "Moodie").strip()
     telegram_daily_notify_utc_hour: int = int(os.getenv("TELEGRAM_DAILY_NOTIFY_UTC_HOUR", "8"))
     telegram_enable_polling: bool = os.getenv("TELEGRAM_ENABLE_POLLING", "true").lower() in ("1", "true", "yes")
+    itunes_search_country: str = os.getenv("ITUNES_SEARCH_COUNTRY", "US").strip() or "US"
 
 
 settings = Settings()

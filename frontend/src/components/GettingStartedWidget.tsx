@@ -6,6 +6,7 @@ import {
   GETTING_STARTED_TASK_TOTAL,
   loadGettingStartedProgress,
   isGettingStartedComplete,
+  setGettingStartedTaskDone,
   type GettingStartedProgress,
   type GettingStartedTaskId,
 } from '../ui/gettingStarted'
@@ -13,6 +14,7 @@ import { t } from '../i18n/i18n'
 import { GettingStartedTaskIcon } from './GettingStartedTaskIcon'
 import { GettingStarted1fitPromo } from './GettingStarted1fitPromo'
 import { getFitRewardUrl } from '../config/fitRewardUrl'
+import { openTelegramMiniApp } from '../telegram/deepLink'
 
 const TASK_COPY: Array<{ key: GettingStartedTaskId; i18n: string }> = [
   { key: 'first_post', i18n: 'gs_task_first_post' },
@@ -42,6 +44,12 @@ export function GettingStartedWidget({ compactLink = false }: { compactLink?: bo
   )
   const complete = isGettingStartedComplete(progress)
   const progressLabel = t('gs_progress').replace('{done}', String(doneCount)).replace('{total}', String(GETTING_STARTED_TASK_TOTAL))
+  const tryTelegramBot = () => {
+    if (openTelegramMiniApp()) {
+      setGettingStartedTaskDone('add_to_home')
+      setProgress(loadGettingStartedProgress())
+    }
+  }
 
   if (compactLink) {
     return (
@@ -89,7 +97,15 @@ export function GettingStartedWidget({ compactLink = false }: { compactLink?: bo
             style={{ overflow: 'hidden' }}
           >
             {TASK_COPY.map(({ key, i18n }, i) => (
-              <GsItem key={key} ok={progress[key]} text={t(i18n)} index={i} stagger={stagger} reduceMotion={reduceMotion} />
+              <GsItem
+                key={key}
+                ok={progress[key]}
+                text={t(i18n)}
+                index={i}
+                stagger={stagger}
+                reduceMotion={reduceMotion}
+                onClick={key === 'add_to_home' ? tryTelegramBot : undefined}
+              />
             ))}
           </motion.div>
         ) : null}
@@ -128,12 +144,14 @@ function GsItem({
   index,
   stagger,
   reduceMotion,
+  onClick,
 }: {
   ok: boolean
   text: string
   index: number
   stagger: number
   reduceMotion: boolean | null
+  onClick?: () => void
 }) {
   const d = reduceMotion ? 0 : 0.32
   return (
@@ -142,6 +160,17 @@ function GsItem({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: d, delay: reduceMotion ? 0 : index * stagger, ease: [0.22, 1, 0.36, 1] }}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (!onClick) return
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onClick()
+        }
+      }}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      style={onClick ? { cursor: 'pointer' } : undefined}
     >
       <motion.span
         className="gs-item__box"

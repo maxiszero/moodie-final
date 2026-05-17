@@ -2023,6 +2023,86 @@
             margin-top: 6px;
         }
 
+        .profile-mood-song {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: min(100%, 480px);
+            margin-top: 12px;
+            padding: 12px;
+            border: 1px solid rgba(var(--accent-rgb), 0.18);
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.08), rgba(255, 255, 255, 0.02));
+            text-align: left;
+        }
+
+        .profile-mood-song__art {
+            width: 58px;
+            height: 58px;
+            border-radius: 14px;
+            object-fit: cover;
+            box-shadow: var(--shadow-sm);
+            flex-shrink: 0;
+        }
+
+        .profile-mood-song__body {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .profile-mood-song__label {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 4px;
+        }
+
+        .profile-mood-song__title {
+            color: var(--text-primary);
+            font-size: 0.92rem;
+            font-weight: 800;
+            line-height: 1.25;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .profile-mood-song__actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .profile-mood-song__play,
+        .profile-mood-song__link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 32px;
+            border-radius: 999px;
+            padding: 7px 11px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            text-decoration: none;
+        }
+
+        .profile-mood-song__play {
+            border: 0;
+            background: var(--primary-btn);
+            color: #fff;
+            cursor: pointer;
+        }
+
+        .profile-mood-song__link {
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+        }
+
         .profile-badges {
             display: flex;
             flex-wrap: wrap;

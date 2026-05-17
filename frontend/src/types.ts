@@ -89,6 +89,15 @@ export type AppNotification = {
   createdAt?: string
 }
 
+export type MoodSong = {
+  title: string
+  artist: string
+  previewUrl: string
+  externalUrl: string
+  artworkUrl?: string
+  source?: string
+}
+
 export type Post = {
   _id: string
   userId: PostAuthor | string
@@ -128,6 +137,12 @@ export type PublicUser = {
   currentColor?: string
   currentColor2?: string
   currentColor3?: string
+  moodSongTitle?: string
+  moodSongArtist?: string
+  moodSongPreviewUrl?: string
+  moodSongExternalUrl?: string
+  moodSongArtworkUrl?: string
+  moodSongSource?: string
   createdAt?: string
   registrationIp?: string
   lastIp?: string

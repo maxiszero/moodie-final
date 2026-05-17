@@ -6,12 +6,14 @@ import {
   GETTING_STARTED_TASK_IDS,
   loadGettingStartedProgress,
   isGettingStartedComplete,
+  setGettingStartedTaskDone,
   type GettingStartedProgress,
 } from '../ui/gettingStarted'
 import { t } from '../i18n/i18n'
 import { GettingStartedTaskIcon } from './GettingStartedTaskIcon'
 import { GettingStarted1fitPromo } from './GettingStarted1fitPromo'
 import { getFitRewardUrl } from '../config/fitRewardUrl'
+import { openTelegramMiniApp } from '../telegram/deepLink'
 
 export function GettingStartedModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const reduceMotion = useReducedMotion()
@@ -30,6 +32,12 @@ export function GettingStartedModal({ open, onClose }: { open: boolean; onClose:
   )
   const complete = isGettingStartedComplete(progress)
   const progressLabel = t('gs_progress').replace('{done}', String(doneCount)).replace('{total}', String(GETTING_STARTED_TASK_TOTAL))
+  const tryTelegramBot = () => {
+    if (openTelegramMiniApp()) {
+      setGettingStartedTaskDone('add_to_home')
+      setProgress(loadGettingStartedProgress())
+    }
+  }
 
   return (
     <AnimatePresence>
@@ -64,7 +72,7 @@ export function GettingStartedModal({ open, onClose }: { open: boolean; onClose:
           <TaskRow ok={progress.first_reaction} title={t('gs_task_reaction')} hint={t('gs_task_hint_reaction')} index={1} />
           <TaskRow ok={progress.first_follow} title={t('gs_task_follow')} hint={t('gs_task_hint_follow')} index={2} />
           <TaskRow ok={progress.open_profile} title={t('gs_task_profile')} hint={t('gs_task_hint_profile')} index={3} />
-          <TaskRow ok={progress.add_to_home} title={t('gs_task_a2hs')} hint={t('gs_task_hint_a2hs')} index={4} />
+          <TaskRow ok={progress.add_to_home} title={t('gs_task_a2hs')} hint={t('gs_task_hint_a2hs')} index={4} onClick={tryTelegramBot} />
         </div>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
@@ -119,7 +127,19 @@ export function GettingStartedModal({ open, onClose }: { open: boolean; onClose:
   )
 }
 
-function TaskRow({ ok, title, hint, index }: { ok: boolean; title: string; hint: string; index: number }) {
+function TaskRow({
+  ok,
+  title,
+  hint,
+  index,
+  onClick,
+}: {
+  ok: boolean
+  title: string
+  hint: string
+  index: number
+  onClick?: () => void
+}) {
   return (
     <motion.div
       style={{
@@ -130,10 +150,22 @@ function TaskRow({ ok, title, hint, index }: { ok: boolean; title: string; hint:
         border: '1px solid var(--border-color)',
         background: 'rgba(255,255,255,0.02)',
         alignItems: 'flex-start',
+        cursor: onClick ? 'pointer' : undefined,
       }}
       initial={{ opacity: 0, x: -6 }}
       animate={{ opacity: ok ? 0.75 : 1, x: 0 }}
       transition={{ duration: 0.3, delay: index * 0.05, ease: [0.22, 1, 0.36, 1] }}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (!onClick) return
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onClick()
+        }
+      }}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      whileTap={onClick ? { scale: 0.99 } : undefined}
     >
       <div className="gs-modal-task-icon" style={{ flexShrink: 0, marginTop: 2 }}>
         <GettingStartedTaskIcon done={ok} />

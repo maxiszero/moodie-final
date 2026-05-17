@@ -8,7 +8,7 @@ const { notifyTelegramUser } = require('../utils/telegramNotify');
 const { notifyInAppUser } = require('../utils/inAppNotify');
 
 const publicUserFields =
-  'username currentEmotion currentEmoji currentColor currentColor2 currentColor3 createdAt';
+  'username currentEmotion currentEmoji currentColor currentColor2 currentColor3 moodSongTitle moodSongArtist moodSongPreviewUrl moodSongExternalUrl moodSongArtworkUrl moodSongSource createdAt';
 
 const WEEKLY_SUMMARY_CACHE_MS = 12 * 60 * 60 * 1000;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -200,6 +200,12 @@ const getUserByUsername = async (req, res, next) => {
         currentColor: user.currentColor || '#9E9E9E',
         currentColor2: user.currentColor2 || '#757575',
         currentColor3: user.currentColor3 || '#616161',
+        moodSongTitle: user.moodSongTitle || '',
+        moodSongArtist: user.moodSongArtist || '',
+        moodSongPreviewUrl: user.moodSongPreviewUrl || '',
+        moodSongExternalUrl: user.moodSongExternalUrl || '',
+        moodSongArtworkUrl: user.moodSongArtworkUrl || '',
+        moodSongSource: user.moodSongSource || '',
         createdAt: user.createdAt
       },
       posts: postsWithFollowInfo,

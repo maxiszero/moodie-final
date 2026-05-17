@@ -58,6 +58,24 @@ function coercePythonAnalysis(data, text) {
   };
 }
 
+function coerceMoodSong(data) {
+  const song = data && typeof data === 'object' ? data.song : null;
+  if (!song || typeof song !== 'object') return null;
+  const title = typeof song.moodSongTitle === 'string' ? song.moodSongTitle.trim() : '';
+  const artist = typeof song.moodSongArtist === 'string' ? song.moodSongArtist.trim() : '';
+  const previewUrl = typeof song.moodSongPreviewUrl === 'string' ? song.moodSongPreviewUrl.trim() : '';
+  const externalUrl = typeof song.moodSongExternalUrl === 'string' ? song.moodSongExternalUrl.trim() : '';
+  if (!title || !artist || !previewUrl || !externalUrl) return null;
+  return {
+    moodSongTitle: title,
+    moodSongArtist: artist,
+    moodSongPreviewUrl: previewUrl,
+    moodSongExternalUrl: externalUrl,
+    moodSongArtworkUrl: typeof song.moodSongArtworkUrl === 'string' ? song.moodSongArtworkUrl.trim() : '',
+    moodSongSource: typeof song.moodSongSource === 'string' ? song.moodSongSource.trim() : 'itunes',
+  };
+}
+
 /**
  * Analyzes text and returns { emotion, emoji, color, color2, color3, reasoning, tip, feedQuality } (fallback provided).
  * Supports API key rotation.
@@ -470,4 +488,9 @@ const summarizeWeeklyMood = async (posts, lang) => {
   return summarizeWeeklyMoodFallback(posts, lang);
 };
 
-module.exports = { analyzeEmotion, summarizeWeeklyMood };
+const pickMoodSong = async ({ emotion, text, lang }) => {
+  const data = await postPythonMood('/api/mood-song/pick', { emotion, text, lang });
+  return coerceMoodSong(data);
+};
+
+module.exports = { analyzeEmotion, summarizeWeeklyMood, pickMoodSong };

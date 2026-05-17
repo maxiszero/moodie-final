@@ -42,6 +42,42 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  moodSongTitle: {
+    type: String,
+    default: '',
+    maxlength: 120,
+    trim: true,
+  },
+  moodSongArtist: {
+    type: String,
+    default: '',
+    maxlength: 120,
+    trim: true,
+  },
+  moodSongPreviewUrl: {
+    type: String,
+    default: '',
+    maxlength: 500,
+    trim: true,
+  },
+  moodSongExternalUrl: {
+    type: String,
+    default: '',
+    maxlength: 500,
+    trim: true,
+  },
+  moodSongArtworkUrl: {
+    type: String,
+    default: '',
+    maxlength: 500,
+    trim: true,
+  },
+  moodSongSource: {
+    type: String,
+    default: '',
+    maxlength: 32,
+    trim: true,
+  },
   blockedUsers: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

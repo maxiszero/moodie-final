@@ -2,7 +2,7 @@
 const Post = require('../models/Post');
 const User = require('../models/User');
 const Comment = require('../models/Comment');
-const { analyzeEmotion } = require('../utils/aiAnalyzer');
+const { analyzeEmotion, pickMoodSong } = require('../utils/aiAnalyzer');
 const { paletteForEmotion, normalizeEmotion } = require('../config/emotionPalette');
 const { notifyTelegramUser, notifyTelegramUsers } = require('../utils/telegramNotify');
 const { notifyInAppUser, notifyInAppUsers } = require('../utils/inAppNotify');
@@ -307,6 +307,7 @@ const createPost = async (req, res, next) => {
     }
 
     const fq = typeof feedQuality === 'number' && !Number.isNaN(feedQuality) ? feedQuality : 65;
+    const moodSong = await pickMoodSong({ emotion, text, lang: req.user?.preferredLanguage || 'ru' });
 
     const post = await Post.create({
       text,
@@ -330,6 +331,7 @@ const createPost = async (req, res, next) => {
       currentColor3: color3,
       weeklyAiSummary: '',
       weeklyAiSummaryAt: null,
+      ...(moodSong || {}),
     });
 
     const populatedPost = await post.populate('userId', 'username currentEmotion currentEmoji currentColor currentColor2 currentColor3');

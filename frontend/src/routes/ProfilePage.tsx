@@ -2,7 +2,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { apiFetch } from '../api/apiClient'
 import { useSession } from '../state/SessionContext'
-import type { AchievementBadge, DailyQuestionHistoryItem, MoodHeatmapDay, ProfilePayload, PublicUser } from '../types'
+import type { AchievementBadge, DailyQuestionHistoryItem, MoodHeatmapDay, MoodSong, ProfilePayload, PublicUser } from '../types'
 import { PostCard } from '../components/PostCard'
 import { t, getLang } from '../i18n/i18n'
 import { setGettingStartedTaskDone } from '../ui/gettingStarted'
@@ -101,6 +101,62 @@ function summaryLines(value: string | undefined) {
     .map((x) => x.replace(/^[-•]\s*/, '').trim())
     .filter(Boolean)
     .slice(0, 3)
+}
+
+function userMoodSong(user: PublicUser): MoodSong | null {
+  const title = (user.moodSongTitle || '').trim()
+  const artist = (user.moodSongArtist || '').trim()
+  const previewUrl = (user.moodSongPreviewUrl || '').trim()
+  const externalUrl = (user.moodSongExternalUrl || '').trim()
+  if (!title || !artist || !previewUrl || !externalUrl) return null
+  return {
+    title,
+    artist,
+    previewUrl,
+    externalUrl,
+    artworkUrl: (user.moodSongArtworkUrl || '').trim(),
+    source: (user.moodSongSource || '').trim(),
+  }
+}
+
+function MoodSongCard({ song }: { song: MoodSong }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [playing, setPlaying] = useState(false)
+
+  const toggle = async () => {
+    const audio = audioRef.current
+    if (!audio) return
+    if (playing) {
+      audio.pause()
+      setPlaying(false)
+      return
+    }
+    try {
+      await audio.play()
+      setPlaying(true)
+    } catch {
+      window.open(song.externalUrl, '_blank', 'noopener,noreferrer')
+    }
+  }
+
+  return (
+    <div className="profile-mood-song">
+      {song.artworkUrl ? <img className="profile-mood-song__art" src={song.artworkUrl} alt="" loading="lazy" /> : null}
+      <div className="profile-mood-song__body">
+        <div className="profile-mood-song__label">{t('profile_mood_song_label')}</div>
+        <div className="profile-mood-song__title">{song.artist} — {song.title}</div>
+        <div className="profile-mood-song__actions">
+          <button type="button" className="profile-mood-song__play" onClick={toggle}>
+            {playing ? t('profile_mood_song_pause') : t('profile_mood_song_play')}
+          </button>
+          <a className="profile-mood-song__link" href={song.externalUrl} target="_blank" rel="noreferrer">
+            {t('profile_mood_song_open')}
+          </a>
+        </div>
+        <audio ref={audioRef} src={song.previewUrl} preload="none" onEnded={() => setPlaying(false)} onPause={() => setPlaying(false)} />
+      </div>
+    </div>
+  )
 }
 
 export function ProfilePage() {
@@ -256,6 +312,7 @@ export function ProfilePage() {
     const showFollow = s.isAuthed && !isOwn && !payload.isFollowing
     const weeklyLines = summaryLines(u.weeklyAiSummary)
     const badges = payload.badges || []
+    const moodSong = userMoodSong(u)
 
     return (
       <div className="profile-hero">
@@ -281,6 +338,7 @@ export function ProfilePage() {
             <div className="profile-ai-weekly-empty">{t('profile_weekly_ai_empty')}</div>
           )}
         </div>
+        {moodSong ? <MoodSongCard song={moodSong} /> : null}
         {badges.length ? (
           <div className="profile-badges" aria-label={t('profile_badges_title')}>
             {badges.map((badge: AchievementBadge) => (

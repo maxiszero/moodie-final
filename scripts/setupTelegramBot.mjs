@@ -44,7 +44,7 @@ await callTelegram('setMyCommands', {
     },
     {
       command: 'help',
-      description: 'Commands: app, today, notify',
+      description: 'Commands: app, today, song, notify',
     },
     {
       command: 'app',
@@ -53,6 +53,10 @@ await callTelegram('setMyCommands', {
     {
       command: 'today',
       description: "Today's reflection question + Open",
+    },
+    {
+      command: 'song',
+      description: 'Your current mood song preview',
     },
     {
       command: 'notify',

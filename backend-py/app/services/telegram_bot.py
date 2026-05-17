@@ -61,6 +61,32 @@ def _settings_markup(user: dict[str, Any] | None) -> dict[str, Any] | None:
     return {"inline_keyboard": rows} if rows else None
 
 
+def _mood_song_markup(user: dict[str, Any] | None, lang: str) -> dict[str, Any] | None:
+    rows: list[list[dict[str, Any]]] = []
+    preview_url = (user or {}).get("moodSongPreviewUrl")
+    external_url = (user or {}).get("moodSongExternalUrl")
+    if isinstance(preview_url, str) and preview_url.startswith("https://"):
+        rows.append([{"text": "▶ Listen preview" if lang == "en" else "▶ Слушать preview", "url": preview_url}])
+    if isinstance(external_url, str) and external_url.startswith("https://"):
+        rows.append([{"text": "Apple Music", "url": external_url}])
+    base = _web_app_markup()
+    if base:
+        rows.extend(base["inline_keyboard"])
+    return {"inline_keyboard": rows} if rows else None
+
+
+def _mood_song_text(user: dict[str, Any] | None, lang: str) -> str | None:
+    if not user:
+        return None
+    title = (user.get("moodSongTitle") or "").strip()
+    artist = (user.get("moodSongArtist") or "").strip()
+    if not title or not artist:
+        return None
+    if lang == "en":
+        return f"🎧 Mood song\n\n{artist} — {title}\n\nTap Listen to play the free iTunes preview."
+    return f"🎧 Песня настроения\n\n{artist} — {title}\n\nНажмите «Слушать», чтобы включить бесплатный preview из iTunes."
+
+
 def _parse_command(text: str) -> tuple[str, str]:
     t = text.strip()
     if not t.startswith("/"):
@@ -153,6 +179,24 @@ def _notify_status_text(user: dict[str, Any], lang: str) -> str:
     )
 
 
+def _notify_quick_text(user: dict[str, Any], lang: str) -> str:
+    daily = bool(user.get("telegramDailyNotify"))
+    activity = user.get("telegramActivityNotify") is not False and bool(user.get("telegramChatId") or user.get("telegramUserId"))
+    if lang == "en":
+        return (
+            "⚡ Quick notifications\n\n"
+            f"🌤 Daily: {'on' if daily else 'off'}\n"
+            f"💬 Activity: {'on' if activity else 'off'}\n\n"
+            "Tap a button below, or use /settings for full schedule and quiet hours."
+        )
+    return (
+        "⚡ Быстрые уведомления\n\n"
+        f"🌤 Вопрос дня: {'вкл' if daily else 'выкл'}\n"
+        f"💬 Активность: {'вкл' if activity else 'выкл'}\n\n"
+        "Нажмите кнопку ниже или используйте /settings для времени и тихих часов."
+    )
+
+
 class TelegramBotRunner:
     def __init__(self) -> None:
         self._token = settings.telegram_bot_token.strip()
@@ -184,6 +228,20 @@ class TelegramBotRunner:
         if text:
             payload["text"] = text
         await self._post_json(client, "answerCallbackQuery", payload)
+
+    async def edit_message_text(
+        self,
+        client: httpx.AsyncClient,
+        chat_id: int,
+        message_id: int,
+        text: str,
+        *,
+        reply_markup: dict[str, Any] | None = None,
+    ) -> None:
+        payload: dict[str, Any] = {"chat_id": chat_id, "message_id": message_id, "text": text}
+        if reply_markup is not None:
+            payload["reply_markup"] = reply_markup
+        await self._post_json(client, "editMessageText", payload)
 
     async def handle_callback_query(self, client: httpx.AsyncClient, callback: dict[str, Any]) -> None:
         callback_id = callback.get("id")
@@ -218,12 +276,14 @@ class TelegramBotRunner:
                 "Updated" if lang == "en" else "Обновлено",
             )
             chat = (callback.get("message") or {}).get("chat") or {}
+            message_id = (callback.get("message") or {}).get("message_id")
             chat_id = chat.get("id")
-            if chat_id is not None:
+            if chat_id is not None and message_id is not None:
                 fresh = {**user, field: value}
-                await self.send_message(
+                await self.edit_message_text(
                     client,
                     int(chat_id),
+                    int(message_id),
                     _notify_status_text(fresh, lang),
                     reply_markup=_settings_markup(fresh),
                 )
@@ -283,6 +343,7 @@ class TelegramBotRunner:
                     "/start — intro\n"
                     "/app — open Moodie\n"
                     "/today — today’s reflection question + Open button\n"
+                    "/song — your current mood song\n"
                     "/notify on|off — all notifications\n"
                     "/notify daily on|off — daily question\n"
                     "/notify activity on|off — follows, comments, support\n"
@@ -295,6 +356,7 @@ class TelegramBotRunner:
                     "/start — знакомство\n"
                     "/app — открыть Moodie\n"
                     "/today — вопрос дня + кнопка «Открыть»\n"
+                    "/song — текущая песня настроения\n"
                     "/notify on|off — все уведомления\n"
                     "/notify daily on|off — вопрос дня\n"
                     "/notify activity on|off — подписки, комментарии, поддержка\n"
@@ -319,6 +381,19 @@ class TelegramBotRunner:
             else:
                 line = f"🌤 Вопрос дня\n\n{question}"
             await self.send_message(client, int(chat_id), line, reply_markup=_settings_markup(user))
+            return
+
+        if cmd == "song":
+            line = _mood_song_text(user, lang)
+            if not line:
+                await reply(
+                    "🎧 No mood song yet. Publish a post first, and Moodie will pick one."
+                    if lang == "en"
+                    else "🎧 Песни настроения пока нет. Опубликуйте пост, и Moodie подберёт трек.",
+                    with_app=True,
+                )
+                return
+            await self.send_message(client, int(chat_id), line, reply_markup=_mood_song_markup(user, lang))
             return
 
         if cmd == "me":
@@ -424,7 +499,7 @@ class TelegramBotRunner:
                     )
                 return
 
-            await self.send_message(client, int(chat_id), _notify_status_text(user, lang), reply_markup=_settings_markup(user))
+            await self.send_message(client, int(chat_id), _notify_quick_text(user, lang), reply_markup=_settings_markup(user))
             return
 
 

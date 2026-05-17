@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from app.main import create_app
 from app.services.ai import WeeklyPost, estimate_feed_quality, fallback_analysis, weekly_summary_fallback
+from app.services.mood_song import normalize_emotion, query_for_mood, song_payload, MoodSong
 from app.services.telegram_webapp import validate_webapp_init_data
 from app.services.telegram_bot import _daily_due_now, _in_quiet_hours, _local_day_key
 
@@ -51,6 +52,30 @@ def test_weekly_summary_fallback_is_deterministic() -> None:
 
     assert "За неделю" in summary
     assert "работа" in summary
+
+
+def test_mood_song_query_is_deterministic_for_same_post() -> None:
+    first = query_for_mood("sad", "Сегодня грустно")
+    second = query_for_mood("sad", "Сегодня грустно")
+
+    assert first == second
+    assert normalize_emotion("unknown") == "neutral"
+
+
+def test_mood_song_payload_uses_profile_field_names() -> None:
+    payload = song_payload(
+        MoodSong(
+            title="Sweater Weather",
+            artist="The Neighbourhood",
+            previewUrl="https://example.com/preview.m4a",
+            externalUrl="https://example.com/song",
+            artworkUrl="https://example.com/art.jpg",
+        )
+    )
+
+    assert payload["moodSongTitle"] == "Sweater Weather"
+    assert payload["moodSongArtist"] == "The Neighbourhood"
+    assert payload["moodSongPreviewUrl"].endswith(".m4a")
 
 
 def test_telegram_daily_due_uses_user_local_hour() -> None:

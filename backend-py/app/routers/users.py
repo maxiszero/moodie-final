@@ -23,6 +23,12 @@ PUBLIC_USER_FIELDS = {
     "currentColor": 1,
     "currentColor2": 1,
     "currentColor3": 1,
+    "moodSongTitle": 1,
+    "moodSongArtist": 1,
+    "moodSongPreviewUrl": 1,
+    "moodSongExternalUrl": 1,
+    "moodSongArtworkUrl": 1,
+    "moodSongSource": 1,
     "createdAt": 1,
 }
 WEEKLY_SUMMARY_CACHE_MS = 12 * 60 * 60 * 1000
@@ -41,6 +47,12 @@ def public_user(user: dict[str, Any] | None) -> dict[str, Any] | None:
             "currentColor": user.get("currentColor") or "#9E9E9E",
             "currentColor2": user.get("currentColor2") or "#757575",
             "currentColor3": user.get("currentColor3") or "#616161",
+            "moodSongTitle": user.get("moodSongTitle") or "",
+            "moodSongArtist": user.get("moodSongArtist") or "",
+            "moodSongPreviewUrl": user.get("moodSongPreviewUrl") or "",
+            "moodSongExternalUrl": user.get("moodSongExternalUrl") or "",
+            "moodSongArtworkUrl": user.get("moodSongArtworkUrl") or "",
+            "moodSongSource": user.get("moodSongSource") or "",
             "createdAt": user.get("createdAt"),
         }
     )

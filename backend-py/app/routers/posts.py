@@ -12,6 +12,7 @@ from ..dependencies import banned_user_ids, current_user, optional_user
 from ..mongo import mongo_json, object_id, stringify_mongo
 from ..realtime import emit_new_post
 from ..services.ai import analyze_emotion
+from ..services.mood_song import pick_mood_song, song_payload
 from ..services.palette import normalize_emotion, palette_for_emotion
 
 router = APIRouter(prefix="/posts", tags=["posts"])
@@ -202,6 +203,7 @@ async def create_post(
         analysis["color2"] = palette["color2"]
         analysis["color3"] = palette["color3"]
     feed_quality = analysis.get("feedQuality") if isinstance(analysis.get("feedQuality"), (int, float)) else 65
+    mood_song = song_payload(await pick_mood_song(analysis.get("emotion") or "neutral", text)) or {}
     now = datetime.now(timezone.utc)
     doc = {
         "userId": user["_id"],
@@ -241,6 +243,7 @@ async def create_post(
                 "currentColor3": doc["color3"],
                 "weeklyAiSummary": "",
                 "weeklyAiSummaryAt": None,
+                **mood_song,
                 "updatedAt": now,
             }
         },
