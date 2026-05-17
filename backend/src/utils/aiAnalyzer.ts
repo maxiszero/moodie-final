@@ -140,6 +140,28 @@ async function suggestMoodSongs(text, limit = 5) {
   return { emotion, songs };
 }
 
+/** Groq tip-only: prefer plain text to avoid json_validate_failed from emojis / bad escaping. */
+function normalizeGroqTipContent(raw) {
+  let s = String(raw || '').trim();
+  if (!s) return '';
+  if (s.startsWith('```')) {
+    s = s.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+  }
+  if (s.startsWith('{')) {
+    try {
+      const o = JSON.parse(s);
+      if (o && typeof o.tip === 'string' && o.tip.trim()) return o.tip.trim().slice(0, 280);
+    } catch {
+      /* plain text or broken JSON */
+    }
+  }
+  return s
+    .replace(/^["'\s]+|["'\s]+$/g, '')
+    .replace(/\s*\n\s*/g, ' ')
+    .trim()
+    .slice(0, 280);
+}
+
 /**
  * Analyzes text and returns { emotion, emoji, color, color2, color3, reasoning, tip, feedQuality } (fallback provided).
  * Supports API key rotation.
@@ -153,11 +175,10 @@ const analyzeEmotionFallback = async (text, isTipOnly = false) => {
       
       let systemPrompt = "";
       if (isTipOnly) {
-        systemPrompt = `You are a supportive and empathetic friend. 
-        Analyze the text and provide a very short (max 15 words) supportive tip, advice or a fitting quote in Russian. 
-        Use standard colorful Unicode emojis.
-        CRITICAL: All emojis must be INSIDE the double quotes of the JSON value.
-        Respond ONLY with a valid JSON object: {"tip": "..."}`;
+        systemPrompt = `Ты тёплый, поддерживающий друг. Пользователь пришлёт короткую запись о настроении.
+Напиши ОДНО короткое предложение по-русски (до ~18 слов): совет, подбадривание или уместная цитата.
+Можно 1–3 эмодзи внутри этой же фразы.
+Без JSON. Без кавычек вокруг всего ответа. Без списков и без «Совет:». Только текст.`;
       } else {
         systemPrompt = `You are an AI emotion analyzer. Analyze the text and return a JSON object.
 Rules:
@@ -190,57 +211,67 @@ TEXT TO ANALYZE:
 `
       }
 
+      const requestBody = {
+        model: 'llama-3.1-8b-instant',
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt,
+          },
+          {
+            role: 'user',
+            content: text,
+          },
+        ],
+        max_tokens: isTipOnly ? 120 : 200,
+        temperature: isTipOnly ? 0.55 : 0.7,
+      };
+      if (!isTipOnly) {
+        requestBody.response_format = { type: 'json_object' };
+      }
+
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
+          Authorization: `Bearer ${apiKey}`,
         },
-        body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
-          messages: [{
-            role: 'system',
-            content: systemPrompt
-          }, {
-            role: 'user',
-            content: text
-          }],
-          response_format: { type: "json_object" },
-          max_tokens: 200,
-          temperature: 0.7
-        })
+        body: JSON.stringify(requestBody),
       });
 
       if (response.ok) {
         const data = await response.json();
-        let aiResponse = JSON.parse(data.choices[0].message.content.trim());
-        
+        const rawContent = (data.choices[0].message.content || '').trim();
+
         if (isTipOnly) {
-          return { tip: aiResponse.tip };
-        }
+          const tip = normalizeGroqTipContent(rawContent);
+          if (tip) return { tip };
+        } else {
+          let aiResponse = JSON.parse(rawContent);
 
-        if (aiResponse.emotion && aiResponse.emoji && aiResponse.color1) {
-          console.log(`Groq AI определил:`, aiResponse);
-          
-          // Improved emoji extraction: keep only the first actual emoji
-          let emoji = '😐';
-          const emojiMatch = (aiResponse.emoji || '').match(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u);
-          if (emojiMatch) {
-            emoji = emojiMatch[0];
+          if (aiResponse.emotion && aiResponse.emoji && aiResponse.color1) {
+            console.log(`Groq AI определил:`, aiResponse);
+
+            // Improved emoji extraction: keep only the first actual emoji
+            let emoji = '😐';
+            const emojiMatch = (aiResponse.emoji || '').match(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u);
+            if (emojiMatch) {
+              emoji = emojiMatch[0];
+            }
+
+            const fq = clampFeedQuality(aiResponse.feedQuality) ?? estimateFeedQuality(text);
+            return {
+              emotion: aiResponse.emotion.toLowerCase(),
+              emoji: emoji,
+              intensity: aiResponse.intensity || 50,
+              color: aiResponse.color1,
+              color2: aiResponse.color2 || aiResponse.color1,
+              color3: aiResponse.color3 || aiResponse.color2 || aiResponse.color1,
+              reasoning: aiResponse.reasoning || '',
+              tip: aiResponse.tip || '',
+              feedQuality: fq,
+            };
           }
-
-          const fq = clampFeedQuality(aiResponse.feedQuality) ?? estimateFeedQuality(text);
-          return {
-            emotion: aiResponse.emotion.toLowerCase(),
-            emoji: emoji,
-            intensity: aiResponse.intensity || 50,
-            color: aiResponse.color1,
-            color2: aiResponse.color2 || aiResponse.color1,
-            color3: aiResponse.color3 || aiResponse.color2 || aiResponse.color1,
-            reasoning: aiResponse.reasoning || "",
-            tip: aiResponse.tip || "",
-            feedQuality: fq,
-          };
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
@@ -284,8 +315,16 @@ TEXT TO ANALYZE:
                     feedQuality: fq,
                 };
              }
-          } catch (e) { 
-             console.error('Не удалось восстановить JSON:', e.message);
+          } catch (e) {
+            console.error('Не удалось восстановить JSON:', e.message);
+            if (isTipOnly && errorData.error && errorData.error.failed_generation) {
+              const fg = String(errorData.error.failed_generation);
+              const m = fg.match(/"tip"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+              if (m && m[1]) {
+                const tip = m[1].replace(/\\"/g, '"').replace(/\\n/g, ' ').trim().slice(0, 280);
+                if (tip) return { tip };
+              }
+            }
           }
         }
       }
