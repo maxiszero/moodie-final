@@ -62,6 +62,11 @@ def test_mood_song_query_is_deterministic_for_same_post() -> None:
     assert normalize_emotion("unknown") == "neutral"
 
 
+def test_normalize_emotion_maps_russian_labels() -> None:
+    assert normalize_emotion("радость") == "happy"
+    assert normalize_emotion("грусть") == "sad"
+
+
 def test_mood_song_payload_uses_profile_field_names() -> None:
     payload = song_payload(
         MoodSong(

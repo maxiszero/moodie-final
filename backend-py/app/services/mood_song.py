@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -127,9 +128,40 @@ MOOD_SONG_QUERIES: dict[str, list[str]] = {
     ],
 }
 
+_EMOTION_ALIASES: dict[str, str] = {
+    "радость": "happy",
+    "счастье": "happy",
+    "веселье": "happy",
+    "грусть": "sad",
+    "печаль": "sad",
+    "тоска": "melancholy",
+    "меланхолия": "melancholy",
+    "усталость": "tired",
+    "устал": "tired",
+    "тревога": "anxious",
+    "тревожность": "anxiety",
+    "волнение": "anxious",
+    "любовь": "love",
+    "злость": "angry",
+    "гнев": "angry",
+    "спокойствие": "calm",
+    "нейтральный": "neutral",
+    "нейтральное": "neutral",
+    "вдохновение": "inspired",
+    "уверенность": "confident",
+    "страх": "scared",
+    "боюсь": "scared",
+    "апатия": "apathy",
+    "безразличие": "apathy",
+    "мотивация": "driven",
+    "энергия": "hyped",
+    "эйфория": "hyped",
+}
+
 
 def normalize_emotion(value: str | None) -> str:
     raw = (value or "neutral").strip().lower()
+    raw = _EMOTION_ALIASES.get(raw, raw)
     return raw if raw in MOOD_SONG_QUERIES else "neutral"
 
 
@@ -202,6 +234,44 @@ def _queries_for_mood_rotated(emotion: str | None, text: str) -> list[str]:
     return pool[k:] + pool[:k]
 
 
+async def _build_suggestion_queries(emotion: str | None, text: str, *, target_tracks: int) -> list[str]:
+    """LLM-driven iTunes search terms first, then static pool as fallback."""
+    from ..services.ai import try_groq_itunes_search_queries
+
+    cap = max(1, min(int(target_tracks), 8))
+    want = min(16, max(cap * 3, 10))
+    tag_for_llm = ((emotion or "").strip()[:120] or normalize_emotion(emotion) or "neutral")
+    ai_list = await try_groq_itunes_search_queries(text, tag_for_llm, want)
+    static = _queries_for_mood_rotated(emotion, text)
+    out: list[str] = []
+    seen: set[str] = set()
+
+    def push(q: str) -> None:
+        s = (q or "").strip()
+        if len(s) < 2 or len(s) > 120:
+            return
+        if re.search(r"https?://|www\.", s, re.I):
+            return
+        low = normalize_for_dedupe(s)
+        if low in seen:
+            return
+        seen.add(low)
+        out.append(s)
+
+    for q in ai_list or []:
+        push(q)
+    for q in static:
+        push(q)
+    if not out:
+        for q in static:
+            push(q)
+    return out
+
+
+def normalize_for_dedupe(s: str) -> str:
+    return re.sub(r"\s+", " ", s.strip().lower())
+
+
 async def pick_mood_song_candidates(
     emotion: str | None,
     text: str = "",
@@ -210,9 +280,10 @@ async def pick_mood_song_candidates(
     country: str | None = None,
 ) -> list[MoodSong]:
     cap = max(1, min(int(limit), 8))
+    queries = await _build_suggestion_queries(emotion, text, target_tracks=cap)
     seen: set[str] = set()
     out: list[MoodSong] = []
-    for query in _queries_for_mood_rotated(emotion, text):
+    for query in queries:
         if len(out) >= cap:
             break
         try:

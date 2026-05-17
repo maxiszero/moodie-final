@@ -159,6 +159,78 @@ Rules:
     return None
 
 
+async def try_groq_itunes_search_queries(post_text: str, emotion_tag: str, count: int) -> list[str] | None:
+    """LLM suggests iTunes `term` search strings from the user's post + mood (varied artists)."""
+    if os.getenv("DISABLE_MOOD_SONG_AI_QUERIES", "").lower() in ("1", "true", "yes"):
+        return None
+    keys = groq_keys()
+    if not keys:
+        return None
+    n = max(4, min(int(count), 16))
+    tag = (emotion_tag or "neutral").strip()[:80]
+    snippet = (post_text or "").strip()[:400]
+    system = f"""You choose Apple iTunes music search queries for songs that fit the user's mood post.
+
+Mood tag (any language, from an analyzer): {tag}
+
+Return ONLY valid JSON: {{"queries": ["...", ...]}}
+
+Rules:
+- The "queries" array must have between 4 and {n} strings (inclusive).
+- Each string is one iTunes search: use form "Artist Name Song Title" or short descriptive phrase.
+- Prefer Latin script and well-known artists so iTunes Search returns previews.
+- Each query must be DIFFERENT (other artist or other song) — do not repeat the same hit.
+- Match the emotional tone of the user's words (not generic unrelated party tracks).
+- No URLs, no markdown, no keys other than "queries".
+- Each string max 90 characters."""
+
+    async with httpx.AsyncClient(timeout=18.0) as client:
+        for api_key in keys:
+            try:
+                response = await client.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+                    json={
+                        "model": settings.groq_model,
+                        "messages": [
+                            {"role": "system", "content": system},
+                            {"role": "user", "content": snippet or "(empty)"},
+                        ],
+                        "response_format": {"type": "json_object"},
+                        "max_tokens": 700,
+                        "temperature": 0.88,
+                    },
+                )
+                if not response.is_success:
+                    continue
+                raw = response.json()["choices"][0]["message"]["content"].strip()
+                parsed = json.loads(raw)
+                arr = parsed.get("queries")
+                if not isinstance(arr, list):
+                    continue
+                out: list[str] = []
+                seen: set[str] = set()
+                for item in arr:
+                    if not isinstance(item, str):
+                        continue
+                    s = item.strip()
+                    if len(s) < 2 or len(s) > 100:
+                        continue
+                    if re.search(r"https?://|www\.", s, re.I):
+                        continue
+                    low = s.lower()
+                    if low in seen:
+                        continue
+                    seen.add(low)
+                    out.append(s)
+                    if len(out) >= n:
+                        break
+                return out if len(out) >= 2 else None
+            except Exception:
+                continue
+    return None
+
+
 async def analyze_emotion(text: str, tip_only: bool = False) -> dict[str, Any]:
     ai_result = await try_groq_analysis(text, tip_only=tip_only)
     if tip_only:
