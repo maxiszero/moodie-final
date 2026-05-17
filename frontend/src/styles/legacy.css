@@ -2103,6 +2103,13 @@
             background: var(--card-bg);
         }
 
+        .profile-mood-song__error {
+            margin-top: 6px;
+            color: var(--text-secondary);
+            font-size: 0.76rem;
+            line-height: 1.3;
+        }
+
         .profile-badges {
             display: flex;
             flex-wrap: wrap;

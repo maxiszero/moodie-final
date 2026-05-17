@@ -59,6 +59,8 @@ export function createApp(context: AppContext = {}) {
           baseUri: ["'none'"],
           frameAncestors: ["'none'"],
           formAction: ["'none'"],
+          imgSrc: ["'self'", "data:", "https://*.mzstatic.com"],
+          mediaSrc: ["'self'", "https://*.itunes.apple.com", "https://audio-ssl.itunes.apple.com"],
         },
       },
     }),

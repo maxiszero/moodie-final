@@ -122,10 +122,12 @@ function userMoodSong(user: PublicUser): MoodSong | null {
 function MoodSongCard({ song }: { song: MoodSong }) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [playing, setPlaying] = useState(false)
+  const [playError, setPlayError] = useState(false)
 
   const toggle = async () => {
     const audio = audioRef.current
     if (!audio) return
+    setPlayError(false)
     if (playing) {
       audio.pause()
       setPlaying(false)
@@ -135,7 +137,7 @@ function MoodSongCard({ song }: { song: MoodSong }) {
       await audio.play()
       setPlaying(true)
     } catch {
-      window.open(song.externalUrl, '_blank', 'noopener,noreferrer')
+      setPlayError(true)
     }
   }
 
@@ -154,6 +156,7 @@ function MoodSongCard({ song }: { song: MoodSong }) {
           </a>
         </div>
         <audio ref={audioRef} src={song.previewUrl} preload="none" onEnded={() => setPlaying(false)} onPause={() => setPlaying(false)} />
+        {playError ? <div className="profile-mood-song__error">{t('profile_mood_song_error')}</div> : null}
       </div>
     </div>
   )
