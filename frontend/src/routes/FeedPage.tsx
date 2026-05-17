@@ -436,10 +436,11 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
                       body: JSON.stringify({ text: content, limit: 5 }),
                     })
                   } catch {
-                    /* Python/offline: publish without picker */
+                    suggest = { songs: [] }
                   }
                   const songs = Array.isArray(suggest.songs) ? suggest.songs : []
                   if (songs.length === 0) {
+                    showToast(t('mood_song_picker_no_tracks'), 'info')
                     const newPost = await apiFetch<Post>('/posts', {
                       method: 'POST',
                       body: JSON.stringify({ text: content }),

@@ -305,6 +305,8 @@ export const STRINGS: Record<Lang, Strings> = {
     mood_song_pick_cancel: 'Отмена',
     mood_song_pick_preview: 'Прослушать',
     mood_song_pick_preview_stop: 'Стоп',
+    mood_song_picker_no_tracks:
+      'Варианты треков не подгрузились (сервис или iTunes). Песню подберём автоматически.',
     welcome_title: 'Добро пожаловать в Moodie!',
     feat1_title: 'Выражайте эмоции',
     feat1_desc: 'Делитесь чувствами в постах до 228 символов.',
@@ -711,6 +713,8 @@ export const STRINGS: Record<Lang, Strings> = {
     mood_song_pick_cancel: 'Cancel',
     mood_song_pick_preview: 'Preview',
     mood_song_pick_preview_stop: 'Stop',
+    mood_song_picker_no_tracks:
+      'Could not load track suggestions (service or iTunes). We will auto-pick a song.',
     welcome_title: 'Welcome to Moodie!',
     feat1_title: 'Express Emotions',
     feat1_desc: 'Share your feelings in posts up to 228 chars.',

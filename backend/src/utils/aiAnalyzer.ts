@@ -39,9 +39,19 @@ async function postPythonMood(path, body, timeoutOverride) {
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(timeoutMs),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      if (path.includes('mood-song')) {
+        console.warn(
+          `[python-mood] ${path} -> HTTP ${res.status} (check PYTHON_MOOD_SERVICE_URL and Python deploy with this route)`,
+        );
+      }
+      return null;
+    }
     return await res.json();
-  } catch (_e) {
+  } catch (err) {
+    if (path.includes('mood-song')) {
+      console.warn('[python-mood] fetch failed:', path, err?.message || err);
+    }
     return null;
   }
 }
@@ -131,12 +141,27 @@ function normalizeClientMoodSong(raw) {
 async function suggestMoodSongs(text, limit = 5) {
   const cap = Math.min(8, Math.max(1, limit));
   const data = await postPythonMood('/api/mood-song/suggest', { text, limit: cap }, 18_000);
-  if (!data || typeof data !== 'object') return { emotion: null, songs: [] };
+  if (!data || typeof data !== 'object') {
+    console.warn(
+      '[mood-song/suggest] no JSON from Python — empty suggest (verify url, timeout, route POST /api/mood-song/suggest on mood service)',
+    );
+    return { emotion: null, songs: [] };
+  }
   const emotion = typeof data.emotion === 'string' ? data.emotion.toLowerCase() : null;
   const rawSongs = Array.isArray(data.songs) ? data.songs : [];
   const songs = rawSongs
     .map((s) => assertSafeMoodSongUrls(coerceMoodSong({ song: s })))
     .filter(Boolean);
+  if (rawSongs.length && !songs.length) {
+    console.warn(
+      `[mood-song/suggest] dropped all ${rawSongs.length} candidate(s): URL validation (preview/store must be https *.apple.com)`,
+    );
+  }
+  if (!rawSongs.length && emotion) {
+    console.warn(
+      `[mood-song/suggest] emotion=${emotion} but 0 raw songs (iTunes search empty or blocked from Python host?)`,
+    );
+  }
   return { emotion, songs };
 }
 
