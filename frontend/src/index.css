@@ -71,6 +71,12 @@ body.telegram-mini-app {
   padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
   overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+html:has(body.telegram-mini-app) {
+  height: auto;
+  min-height: 100%;
 }
 
 body.telegram-mini-app[data-telegram-theme='dark'] {

@@ -19,6 +19,7 @@ import { moodBannerLinearGradient, moodLinearGradient135 } from '../ui/moodGradi
 import { streakLabel } from '../ui/streakLabel'
 import { shareProfileUrl } from '../config/site'
 import { useToast } from '../ui/toastProvider'
+import { isTelegramMiniApp } from '../telegram/webApp'
 
 function HeatmapDayDetails({ day, dateStr }: { day: MoodHeatmapDay; dateStr: string }) {
   const emotions = day.emotions || []
@@ -197,6 +198,7 @@ export function ProfilePage() {
   const [userListTab, setUserListTab] = useState<'followers' | 'following'>('followers')
 
   useEffect(() => {
+    if (isTelegramMiniApp()) return
     document.body.classList.add('profile-bleed-header')
     return () => document.body.classList.remove('profile-bleed-header')
   }, [])

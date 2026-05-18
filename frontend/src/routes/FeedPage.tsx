@@ -10,7 +10,6 @@ import { PostCard } from '../components/PostCard'
 import { DailyQuestionFeed } from '../components/DailyQuestionFeed'
 import { MoodStatsPanel } from '../components/MoodStatsPanel'
 import { MoodWeekWidget } from '../components/MoodWeekWidget'
-import { MoodNeighborsPanel } from '../components/MoodNeighborsPanel'
 import { useFeedMood } from '../state/FeedMoodContext'
 import { t, getLang } from '../i18n/i18n'
 import { applyTheme } from '../ui/theme'
@@ -47,6 +46,7 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
   const [sort, setSort] = useState<'latest' | 'trending' | 'daily' | 'following' | 'for_you'>('latest')
   const [hasFollowing, setHasFollowing] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
   const [initialError, setInitialError] = useState<string | null>(null)
   const [dqToday, setDqToday] = useState<DailyQuestionToday | null>(null)
   const [moodMix, setMoodMix] = useState<boolean>(() => {
@@ -84,6 +84,7 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
   const aiTipTimerRef = useRef<number | null>(null)
   const aiTipAbortRef = useRef<AbortController | null>(null)
   const composerRef = useRef<HTMLDivElement | null>(null)
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
   const draftToastShownRef = useRef(false)
 
   useEffect(() => {
@@ -161,6 +162,7 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
         if (!Array.isArray(data)) throw new Error('Invalid response')
 
         hasMoreRef.current = data.length >= 10
+        setHasMore(data.length >= 10)
 
         if (isFirst) {
           setPosts(data)
@@ -209,6 +211,7 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
     }
     pageRef.current = 1
     hasMoreRef.current = true
+    setHasMore(true)
     prependOkRef.current = true
     setPosts([])
     await loadPosts(true)
@@ -224,6 +227,7 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
     if (sort === 'daily') return
     pageRef.current = 1
     hasMoreRef.current = true
+    setHasMore(true)
     setPosts([])
     prependOkRef.current = true
     void loadPosts(true)
@@ -238,24 +242,41 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
     if (sort === 'daily' || sort === 'following' || sort === 'for_you') return
     pageRef.current = 1
     hasMoreRef.current = true
+    setHasMore(true)
     setPosts([])
     prependOkRef.current = true
     void loadPosts(true)
   }, [moodMix])
 
   useEffect(() => {
-    const onScroll = () => {
-      if (sort === 'daily') return
+    if (sort === 'daily') return
+    const sentinel = loadMoreRef.current
+    if (!sentinel) return
+
+    const onNearEnd = () => {
       if (loadingRef.current || !hasMoreRef.current) return
-      const root = document.scrollingElement ?? document.documentElement
-      const { scrollTop, scrollHeight, clientHeight } = root
-      if (scrollTop + clientHeight >= scrollHeight - 300) {
-        void loadPosts(false)
-      }
+      void loadPosts(false)
     }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [loadPosts, sort])
+
+    if (typeof IntersectionObserver === 'undefined') {
+      const onScroll = () => {
+        const root = document.scrollingElement ?? document.documentElement
+        const { scrollTop, scrollHeight, clientHeight } = root
+        if (scrollTop + clientHeight >= scrollHeight - 320) onNearEnd()
+      }
+      window.addEventListener('scroll', onScroll, { passive: true })
+      return () => window.removeEventListener('scroll', onScroll)
+    }
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) onNearEnd()
+      },
+      { root: null, rootMargin: '320px 0px', threshold: 0 },
+    )
+    obs.observe(sentinel)
+    return () => obs.disconnect()
+  }, [loadPosts, sort, hasMore, posts.length])
 
   useEffect(() => {
     if (!rt.lastNewPost) return
@@ -569,7 +590,6 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
 
       <div className="feed-mood-stats-slot">
         <MoodStatsPanel />
-        {!guestLenta && s.isAuthed ? <MoodNeighborsPanel /> : null}
       </div>
 
       <div className="feed-tabs feed-tabs--scroll" role="tablist" aria-label={t('feed_tabs_label')}>
@@ -864,6 +884,12 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
                 }}
               />
             ))}
+            {posts.length > 0 && hasMore ? (
+              <div ref={loadMoreRef} className="feed-load-sentinel" aria-hidden />
+            ) : null}
+            {loading && posts.length > 0 ? (
+              <div className="loader feed-load-more">{t('loading_posts')}</div>
+            ) : null}
           </>
         )}
       </div>

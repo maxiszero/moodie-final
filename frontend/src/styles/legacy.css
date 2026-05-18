@@ -5916,3 +5916,73 @@
         .settings-blocked-row:last-child {
             border-bottom: none;
         }
+
+        .feed-load-sentinel {
+            height: 1px;
+            width: 100%;
+            pointer-events: none;
+        }
+
+        .feed-load-more {
+            text-align: center;
+            padding: 16px 0 8px;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* Telegram Mini App layout fixes */
+        @media (max-width: 640px) {
+            body.telegram-mini-app main {
+                padding-top: max(12px, env(safe-area-inset-top, 0px));
+                padding-bottom: calc(136px + env(safe-area-inset-bottom, 0px));
+            }
+
+            body.telegram-mini-app .profile-hero {
+                margin-left: 0;
+                margin-right: 0;
+                width: 100%;
+                border-radius: var(--radius-lg);
+                border-left: 1px solid var(--border-color);
+                border-right: 1px solid var(--border-color);
+            }
+
+            body.telegram-mini-app #profileView .profile-banner {
+                border-radius: calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px) 0 0;
+            }
+
+            body.telegram-mini-app #profileView .back-row {
+                display: none;
+            }
+
+            body.telegram-mini-app .profile-stats {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 10px 6px;
+                padding-left: 4px;
+                padding-right: 4px;
+            }
+
+            body.telegram-mini-app .profile-stat {
+                min-width: 0;
+            }
+
+            body.telegram-mini-app .profile-stat-label {
+                font-size: 0.58rem;
+                letter-spacing: 0.02em;
+                line-height: 1.25;
+                hyphens: auto;
+            }
+
+            body.telegram-mini-app .profile-stat-value {
+                font-size: 1.1rem;
+            }
+
+            body.telegram-mini-app #profilePosts,
+            body.telegram-mini-app .feed {
+                padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+            }
+
+            body.telegram-mini-app #profileView .heatmap-container {
+                margin-bottom: 20px;
+            }
+        }
