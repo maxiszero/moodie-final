@@ -8,10 +8,12 @@ import { WelcomeModal } from './components/WelcomeModal'
 import { Onboarding } from './components/Onboarding'
 import { storageKeys } from './config/storage'
 import { GettingStartedModal } from './components/GettingStartedModal'
+import { TelegramOnboardingModal } from './components/TelegramOnboardingModal'
 import { GettingStartedWidget } from './components/GettingStartedWidget'
 import { Seo } from './components/Seo'
 import { AppMobileNav } from './layout/AppMobileNav'
 import { prefetchFitRewardSlot } from './config/fitRewardUrl'
+import { isTelegramMiniApp } from './telegram/webApp'
 
 const FeedPage = lazy(() => import('./routes/FeedPage').then(({ FeedPage }) => ({ default: FeedPage })))
 const SettingsPage = lazy(() => import('./routes/SettingsPage').then(({ SettingsPage }) => ({ default: SettingsPage })))
@@ -26,6 +28,7 @@ const EmotionTestPage = lazy(() =>
   import('./routes/tests/EmotionTestPage').then(({ EmotionTestPage }) => ({ default: EmotionTestPage })),
 )
 const MbtiTestPage = lazy(() => import('./routes/tests/MbtiTestPage').then(({ MbtiTestPage }) => ({ default: MbtiTestPage })))
+const StressTestPage = lazy(() => import('./routes/tests/StressTestPage').then(({ StressTestPage }) => ({ default: StressTestPage })))
 const SearchPage = lazy(() => import('./routes/SearchPage').then(({ SearchPage }) => ({ default: SearchPage })))
 
 function AppShell() {
@@ -100,6 +103,7 @@ export default function App() {
   const [welcomeOpen, setWelcomeOpen] = useState(false)
   const [onboardingOpen, setOnboardingOpen] = useState(false)
   const [gettingStartedOpen, setGettingStartedOpen] = useState(false)
+  const [telegramOnboardingOpen, setTelegramOnboardingOpen] = useState(false)
 
   useEffect(() => {
     const hasSeenOnboarding = localStorage.getItem(storageKeys.hasSeenOnboarding)
@@ -107,6 +111,10 @@ export default function App() {
 
     const hasSeenWelcome = localStorage.getItem(storageKeys.welcomeSeen)
     if (!hasSeenWelcome) setWelcomeOpen(true)
+
+    if (isTelegramMiniApp() && !localStorage.getItem(storageKeys.hasSeenTelegramOnboarding)) {
+      setTelegramOnboardingOpen(true)
+    }
   }, [])
 
   useEffect(() => {
@@ -136,6 +144,7 @@ export default function App() {
               <Route index element={<TestsHubPage />} />
               <Route path="emotions" element={<EmotionTestPage />} />
               <Route path="mbti" element={<MbtiTestPage />} />
+              <Route path="stress" element={<StressTestPage />} />
             </Route>
             <Route path="/settings" element={<SettingsPage />} />
             <Route
@@ -169,6 +178,7 @@ export default function App() {
         }}
       />
       <GettingStartedModal open={gettingStartedOpen} onClose={() => setGettingStartedOpen(false)} />
+      <TelegramOnboardingModal open={telegramOnboardingOpen} onClose={() => setTelegramOnboardingOpen(false)} />
     </HashRouter>
   )
 }

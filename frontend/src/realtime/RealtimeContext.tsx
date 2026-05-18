@@ -2,7 +2,8 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import type { AppNotification, Post } from '../types'
 import { getSocket } from './socket'
 import { t } from '../i18n/i18n'
-import { tryBrowserNotifyDaily } from '../ui/dailyNotifications'
+import { tryBrowserNotifyDaily, tryBrowserNotifyActivity } from '../ui/dailyNotifications'
+import { pushNotification } from '../ui/notificationCenter'
 import { useSession } from '../state/SessionContext'
 import { useToast } from '../ui/toastProvider'
 
@@ -39,7 +40,11 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     }
     const onDailyAnswer = () => setDailyAnswerTick((n) => n + 1)
     const onAppNotification = (payload: AppNotification) => {
-      if (payload?.message) showToast(payload.message, 'info')
+      if (payload?.message) {
+        pushNotification(payload)
+        showToast(payload.message, 'info')
+        tryBrowserNotifyActivity('Moodie', payload.message)
+      }
     }
 
     s.on('online_count', onOnline)

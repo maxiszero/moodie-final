@@ -288,6 +288,8 @@ async def unlink_telegram(
                 "telegramDailyNotify": "",
                 "telegramActivityNotify": "",
                 "telegramDailyNotifyHour": "",
+                "telegramEveningNotify": "",
+                "telegramEveningNotifyHour": "",
                 "telegramTimezoneOffsetMinutes": "",
                 "telegramQuietHoursEnabled": "",
                 "telegramQuietStartHour": "",

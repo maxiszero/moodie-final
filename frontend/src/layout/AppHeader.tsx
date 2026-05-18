@@ -6,6 +6,7 @@ import { useRealtime } from '../realtime/RealtimeContext'
 import { useSession } from '../state/SessionContext'
 import { moodLinearGradient135 } from '../ui/moodGradientStyle'
 import { HeaderSearch } from './HeaderSearch'
+import { NotificationBell } from '../components/NotificationBell'
 
 const homeIcon = (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="nav-icon mobile-only">
@@ -69,6 +70,7 @@ export function AppHeader() {
           <NavLink to="/settings" id="navSettings" className={guestLenta ? 'hidden' : ''} title={t('nav_settings')}>
             {settingsIcon}
           </NavLink>
+          {s.isAuthed ? <NotificationBell /> : null}
           {s.role === 'admin' ? (
             <NavLink to="/admin" id="navAdmin">
               {t('nav_admin')}

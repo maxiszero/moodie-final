@@ -19,3 +19,8 @@ async def ensure_indexes() -> None:
     await db.comments.create_index([("postId", ASCENDING), ("createdAt", ASCENDING)])
     await db.dailyanswers.create_index([("userId", ASCENDING), ("dayKey", ASCENDING)], unique=True)
     await db.dailyanswers.create_index([("dayKey", DESCENDING), ("createdAt", DESCENDING)])
+    await db.moodneighborpresence.create_index([("userId", ASCENDING)], unique=True)
+    await db.moodneighborpresence.create_index([("expiresAt", ASCENDING)], expireAfterSeconds=0)
+    await db.moodneighborpresence.create_index([("emotion", ASCENDING), ("expiresAt", ASCENDING)])
+    await db.moodneighborpresence.create_index([("bucket", ASCENDING), ("expiresAt", ASCENDING)])
+    await db.eveningreviews.create_index([("userId", ASCENDING), ("dayKey", ASCENDING)], unique=True)

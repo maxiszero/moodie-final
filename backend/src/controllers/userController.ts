@@ -6,6 +6,8 @@ const DailyAnswer = require('../models/DailyAnswer');
 const { summarizeWeeklyMood } = require('../utils/aiAnalyzer');
 const { notifyTelegramUser } = require('../utils/telegramNotify');
 const { notifyInAppUser } = require('../utils/inAppNotify');
+const { userDocToRow, rowToCsvBytes, parseCsvToUpdates } = require('../utils/settingsCsv');
+const { computeActivityStreak } = require('../utils/activityStreak');
 
 const publicUserFields =
   'username currentEmotion currentEmoji currentColor currentColor2 currentColor3 moodSongTitle moodSongArtist moodSongPreviewUrl moodSongExternalUrl moodSongArtworkUrl moodSongSource createdAt';
@@ -29,6 +31,8 @@ function telegramSettingsPayload(user) {
     telegramDailyNotify: Boolean(user.telegramDailyNotify),
     telegramActivityNotify: user.telegramActivityNotify !== false,
     telegramDailyNotifyHour: clampHour(user.telegramDailyNotifyHour, 8),
+    telegramEveningNotify: Boolean(user.telegramEveningNotify),
+    telegramEveningNotifyHour: clampHour(user.telegramEveningNotifyHour, 21),
     telegramTimezoneOffsetMinutes: Number.isFinite(Number(user.telegramTimezoneOffsetMinutes))
       ? Number(user.telegramTimezoneOffsetMinutes)
       : 0,
@@ -185,6 +189,15 @@ const getUserByUsername = async (req, res, next) => {
     const followingCount = user.following?.length ?? 0;
     const badges = await profileBadges(user, posts, totalSupportReceived);
 
+    const [postDays, answerDaysForStreak] = await Promise.all([
+      Post.distinct('createdAt', { userId: user._id, hidden: { $ne: true } }).then((dates) =>
+        dates.map((d) => new Date(d).toISOString().slice(0, 10)),
+      ),
+      DailyAnswer.distinct('dayKey', { userId: user._id }),
+    ]);
+    const offsetMinutes = Number(user.telegramTimezoneOffsetMinutes) || 0;
+    const activityStreak = computeActivityStreak(postDays, answerDaysForStreak, offsetMinutes);
+
     let isFollowing = false;
     if (viewerId && user._id.toString() !== viewerId) {
       isFollowing = userFollowing.includes(user._id.toString());
@@ -214,7 +227,8 @@ const getUserByUsername = async (req, res, next) => {
       totalLikesReceived,
       totalSupportReceived,
       badges,
-      isFollowing
+      isFollowing,
+      activityStreak,
     });
   } catch (error) {
     next(error);
@@ -289,7 +303,9 @@ const followUser = async (req, res, next) => {
       ? `👋 ${me.username} followed you on Moodie.`
       : `👋 ${me.username} подписался на вас в Moodie.`;
     notifyTelegramUser(target, followText, 'follow');
-    notifyInAppUser(req.io, target._id, followText, 'follow');
+    notifyInAppUser(req.io, target._id, followText, 'follow', {
+      href: `#/profile/${encodeURIComponent(me.username)}`,
+    });
 
     const followersCount = await User.countDocuments({ following: target._id });
     res.json({ message: 'Followed', isFollowing: true, followersCount });
@@ -379,7 +395,7 @@ const updateSettings = async (req, res, next) => {
 const getTelegramSettings = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id).select(
-      'telegramUserId telegramDailyNotify telegramActivityNotify telegramDailyNotifyHour telegramTimezoneOffsetMinutes telegramQuietHoursEnabled telegramQuietStartHour telegramQuietEndHour',
+      'telegramUserId telegramDailyNotify telegramActivityNotify telegramDailyNotifyHour telegramEveningNotify telegramEveningNotifyHour telegramTimezoneOffsetMinutes telegramQuietHoursEnabled telegramQuietStartHour telegramQuietEndHour',
     );
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json(telegramSettingsPayload(user));
@@ -395,6 +411,12 @@ const updateTelegramSettings = async (req, res, next) => {
     if (typeof req.body?.telegramActivityNotify === 'boolean') updates.telegramActivityNotify = req.body.telegramActivityNotify;
     if (req.body?.telegramDailyNotifyHour !== undefined) {
       updates.telegramDailyNotifyHour = clampHour(req.body.telegramDailyNotifyHour, 8);
+    }
+    if (typeof req.body?.telegramEveningNotify === 'boolean') {
+      updates.telegramEveningNotify = req.body.telegramEveningNotify;
+    }
+    if (req.body?.telegramEveningNotifyHour !== undefined) {
+      updates.telegramEveningNotifyHour = clampHour(req.body.telegramEveningNotifyHour, 21);
     }
     if (typeof req.body?.telegramQuietHoursEnabled === 'boolean') {
       updates.telegramQuietHoursEnabled = req.body.telegramQuietHoursEnabled;
@@ -414,7 +436,7 @@ const updateTelegramSettings = async (req, res, next) => {
     }
 
     const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true }).select(
-      'telegramUserId telegramDailyNotify telegramActivityNotify telegramDailyNotifyHour telegramTimezoneOffsetMinutes telegramQuietHoursEnabled telegramQuietStartHour telegramQuietEndHour',
+      'telegramUserId telegramDailyNotify telegramActivityNotify telegramDailyNotifyHour telegramEveningNotify telegramEveningNotifyHour telegramTimezoneOffsetMinutes telegramQuietHoursEnabled telegramQuietStartHour telegramQuietEndHour',
     );
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json(telegramSettingsPayload(user));
@@ -458,11 +480,12 @@ const getMoodHeatmap = async (req, res, next) => {
     const oneYearAgo = new Date();
     oneYearAgo.setDate(oneYearAgo.getDate() - 365);
 
-    const heatmap = await Post.aggregate([
+    const heatmapFromPosts = await Post.aggregate([
       { 
         $match: { 
           userId: user._id,
-          createdAt: { $gte: oneYearAgo }
+          createdAt: { $gte: oneYearAgo },
+          hidden: { $ne: true },
         } 
       },
       {
@@ -482,7 +505,138 @@ const getMoodHeatmap = async (req, res, next) => {
       { $sort: { "_id": 1 } }
     ]);
 
+    const answerDays = await DailyAnswer.find({ userId: user._id })
+      .select('dayKey')
+      .lean();
+    const byDay = new Map();
+    for (const row of heatmapFromPosts) {
+      byDay.set(row._id, { ...row });
+    }
+    const reflectionColor = '#C4B5FD';
+    for (const ans of answerDays) {
+      const key = ans.dayKey;
+      if (!key) continue;
+      if (byDay.has(key)) {
+        const existing = byDay.get(key);
+        existing.count += 1;
+        existing.emotions.push({ emotion: 'reflection', emoji: '💭', color: reflectionColor });
+      } else {
+        byDay.set(key, {
+          _id: key,
+          dominantColor: reflectionColor,
+          emotions: [{ emotion: 'reflection', emoji: '💭', color: reflectionColor }],
+          count: 1,
+        });
+      }
+    }
+    const heatmap = [...byDay.values()].sort((a, b) => String(a._id).localeCompare(String(b._id)));
+
     res.json(heatmap);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getActivityStreak = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const [postDays, answerDays] = await Promise.all([
+      Post.distinct('createdAt', { userId: user._id, hidden: { $ne: true } }).then((dates) =>
+        dates.map((d) => new Date(d).toISOString().slice(0, 10)),
+      ),
+      DailyAnswer.distinct('dayKey', { userId: user._id }),
+    ]);
+    const offsetMinutes = Number(user.telegramTimezoneOffsetMinutes) || 0;
+    res.json({ streak: computeActivityStreak(postDays, answerDays, offsetMinutes) });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const exportSettingsCsv = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id).select(
+      'preferredLanguage preferredTheme telegramDailyNotify telegramActivityNotify telegramDailyNotifyHour telegramQuietHoursEnabled telegramQuietStartHour telegramQuietEndHour',
+    );
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    const body = rowToCsvBytes(userDocToRow(user));
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="moodie_settings.csv"');
+    res.send(body);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const importSettingsCsv = async (req, res, next) => {
+  try {
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ message: 'Upload a .csv file' });
+    }
+    const fname = String(req.file.originalname || '').toLowerCase();
+    if (!fname.endsWith('.csv')) {
+      return res.status(400).json({ message: 'Upload a .csv file (use export, then edit).' });
+    }
+    if (req.file.buffer.length > 64 * 1024) {
+      return res.status(400).json({ message: 'File too large' });
+    }
+
+    let updates;
+    try {
+      updates = parseCsvToUpdates(req.file.buffer.toString('utf8'));
+    } catch (e) {
+      return res.status(400).json({ message: e.message || 'Invalid CSV' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (updates.preferredLanguage && user.preferredLanguage !== updates.preferredLanguage) {
+      updates.weeklyAiSummary = '';
+      updates.weeklyAiSummaryAt = null;
+    }
+    Object.assign(user, updates);
+    await user.save();
+
+    res.json({
+      message: 'Settings imported from CSV',
+      preferredLanguage: user.preferredLanguage,
+      preferredTheme: user.preferredTheme,
+      telegramDailyNotify: Boolean(user.telegramDailyNotify),
+      telegramActivityNotify: user.telegramActivityNotify !== false,
+      telegramDailyNotifyHour: user.telegramDailyNotifyHour ?? 9,
+      telegramQuietHoursEnabled: Boolean(user.telegramQuietHoursEnabled),
+      telegramQuietStartHour: user.telegramQuietStartHour ?? 22,
+      telegramQuietEndHour: user.telegramQuietEndHour ?? 8,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getBlockedUsers = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id).populate('blockedUsers', publicUserFields).select('blockedUsers');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(Array.isArray(user.blockedUsers) ? user.blockedUsers : []);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const unblockUser = async (req, res, next) => {
+  try {
+    const target = await User.findOne({ username: req.params.username });
+    if (!target) return res.status(404).json({ message: 'User not found' });
+
+    const me = await User.findById(req.user.id);
+    if (!me) return res.status(404).json({ message: 'User not found' });
+
+    me.blockedUsers = (me.blockedUsers || []).filter((id) => id.toString() !== target._id.toString());
+    await me.save();
+    res.json({ message: 'User unblocked' });
   } catch (error) {
     next(error);
   }
@@ -500,5 +654,10 @@ module.exports = {
   getTelegramSettings,
   updateTelegramSettings,
   blockUser,
-  getMoodHeatmap
+  getMoodHeatmap,
+  getActivityStreak,
+  exportSettingsCsv,
+  importSettingsCsv,
+  getBlockedUsers,
+  unblockUser,
 };

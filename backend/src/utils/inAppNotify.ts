@@ -4,12 +4,13 @@ function userRoom(userId) {
   return `user:${String(userId)}`;
 }
 
-function notifyInAppUser(io, userId, message, type = 'activity') {
+function notifyInAppUser(io, userId, message, type = 'activity', extra = {}) {
   if (!io || !userId || !message) return;
   io.to(userRoom(userId)).emit('app_notification', {
     type,
     message: String(message).slice(0, 600),
     createdAt: new Date().toISOString(),
+    ...extra,
   });
 }
 

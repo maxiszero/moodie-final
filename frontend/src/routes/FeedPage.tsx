@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { apiFetch } from '../api/apiClient'
@@ -8,12 +9,16 @@ import { useRealtime } from '../realtime/RealtimeContext'
 import { PostCard } from '../components/PostCard'
 import { DailyQuestionFeed } from '../components/DailyQuestionFeed'
 import { MoodStatsPanel } from '../components/MoodStatsPanel'
+import { MoodWeekWidget } from '../components/MoodWeekWidget'
+import { MoodNeighborsPanel } from '../components/MoodNeighborsPanel'
 import { useFeedMood } from '../state/FeedMoodContext'
 import { t, getLang } from '../i18n/i18n'
 import { applyTheme } from '../ui/theme'
 import { setGettingStartedTaskDone } from '../ui/gettingStarted'
 import { useToast } from '../ui/toastProvider'
 import { moodLinearGradient135 } from '../ui/moodGradientStyle'
+import { storageKeys } from '../config/storage'
+import { usePullToRefresh } from '../ui/usePullToRefresh'
 
 function textHasLink(s: string) {
   return /(https?:\/\/\S+|www\.\S+)/i.test(s)
@@ -39,7 +44,8 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
 
   const [posts, setPosts] = useState<Post[]>([])
   const [activeCommentsPostId, setActiveCommentsPostId] = useState<string | null>(null)
-  const [sort, setSort] = useState<'latest' | 'trending' | 'daily'>('latest')
+  const [sort, setSort] = useState<'latest' | 'trending' | 'daily' | 'following' | 'for_you'>('latest')
+  const [hasFollowing, setHasFollowing] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(false)
   const [initialError, setInitialError] = useState<string | null>(null)
   const [dqToday, setDqToday] = useState<DailyQuestionToday | null>(null)
@@ -52,7 +58,13 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
     }
   })
 
-  const [text, setText] = useState('')
+  const [text, setText] = useState(() => {
+    try {
+      return localStorage.getItem(storageKeys.postDraft) || ''
+    } catch {
+      return ''
+    }
+  })
   const [aiTipOpen, setAiTipOpen] = useState(false)
   const [aiTipText, setAiTipText] = useState('')
   const [postBusy, setPostBusy] = useState(false)
@@ -72,6 +84,34 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
   const aiTipTimerRef = useRef<number | null>(null)
   const aiTipAbortRef = useRef<AbortController | null>(null)
   const composerRef = useRef<HTMLDivElement | null>(null)
+  const draftToastShownRef = useRef(false)
+
+  useEffect(() => {
+    if (!s.isAuthed || draftToastShownRef.current) return
+    try {
+      const draft = localStorage.getItem(storageKeys.postDraft)
+      if (draft?.trim()) {
+        draftToastShownRef.current = true
+        showToast(t('post_draft_restored'), 'info')
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [s.isAuthed, showToast])
+
+  useEffect(() => {
+    if (!s.isAuthed) return
+    const timer = window.setTimeout(() => {
+      try {
+        const draft = text.trim()
+        if (draft) localStorage.setItem(storageKeys.postDraft, draft)
+        else localStorage.removeItem(storageKeys.postDraft)
+      } catch {
+        /* ignore */
+      }
+    }, 400)
+    return () => window.clearTimeout(timer)
+  }, [s.isAuthed, text])
 
   useEffect(() => {
     const tab = new URLSearchParams(loc.search).get('tab')
@@ -115,8 +155,8 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
       const p = pageRef.current
       try {
         let url = `/posts?sort=${encodeURIComponent(sort)}&page=${p}&limit=10`
-        if (emotionFilter) url += `&emotion=${encodeURIComponent(emotionFilter)}`
-        if (moodMix && s.isAuthed && !emotionFilter) url += `&moodMix=1`
+        if (emotionFilter && sort !== 'following' && sort !== 'for_you') url += `&emotion=${encodeURIComponent(emotionFilter)}`
+        if (moodMix && s.isAuthed && !emotionFilter && sort !== 'following' && sort !== 'for_you') url += `&moodMix=1`
         const data = await apiFetch<Post[]>(url, { auth: s.isAuthed })
         if (!Array.isArray(data)) throw new Error('Invalid response')
 
@@ -145,6 +185,42 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
   )
 
   useEffect(() => {
+    if (sort !== 'following' || !s.isAuthed || !s.username) {
+      setHasFollowing(null)
+      return
+    }
+    let alive = true
+    apiFetch<{ username: string }[]>(`/users/${encodeURIComponent(s.username)}/following`, { auth: true })
+      .then((rows) => {
+        if (alive) setHasFollowing(Array.isArray(rows) && rows.length > 0)
+      })
+      .catch(() => {
+        if (alive) setHasFollowing(null)
+      })
+    return () => {
+      alive = false
+    }
+  }, [sort, s.isAuthed, s.username])
+
+  const refreshFeed = useCallback(async () => {
+    if (sort === 'daily') {
+      await loadDqToday()
+      return
+    }
+    pageRef.current = 1
+    hasMoreRef.current = true
+    prependOkRef.current = true
+    setPosts([])
+    await loadPosts(true)
+    refetchStats()
+  }, [loadDqToday, loadPosts, refetchStats, sort])
+
+  const { pullOffset, pullActive } = usePullToRefresh({
+    enabled: !guestLenta,
+    onRefresh: refreshFeed,
+  })
+
+  useEffect(() => {
     if (sort === 'daily') return
     pageRef.current = 1
     hasMoreRef.current = true
@@ -159,7 +235,7 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
     } catch {
       // ignore
     }
-    if (sort === 'daily') return
+    if (sort === 'daily' || sort === 'following' || sort === 'for_you') return
     pageRef.current = 1
     hasMoreRef.current = true
     setPosts([])
@@ -293,6 +369,11 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
 
   const applyPublishSuccess = async (newPost: Post) => {
     setText('')
+    try {
+      localStorage.removeItem(storageKeys.postDraft)
+    } catch {
+      /* ignore */
+    }
     setAiTipOpen(false)
     setAiTipText('')
     closeSongPickModal()
@@ -317,6 +398,11 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
 
   return (
     <>
+      {pullActive ? (
+        <div className="feed-pull-hint" style={{ transform: `translateY(${Math.min(pullOffset, 48)}px)` }}>
+          {t('feed_pull_hint')}
+        </div>
+      ) : null}
       {guestLenta && !s.isAuthed ? (
         <div
           id="lentaGuestOverlay"
@@ -355,6 +441,8 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
           </button>
         </div>
       ) : null}
+
+      {showCreatePost ? <MoodWeekWidget /> : null}
 
       {showCreatePost ? (
         <div ref={composerRef} className="create-post" id="feedComposer">
@@ -481,9 +569,10 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
 
       <div className="feed-mood-stats-slot">
         <MoodStatsPanel />
+        {!guestLenta && s.isAuthed ? <MoodNeighborsPanel /> : null}
       </div>
 
-      <div className="feed-tabs feed-tabs--three" role="tablist" aria-label={t('feed_tabs_label')}>
+      <div className="feed-tabs feed-tabs--scroll" role="tablist" aria-label={t('feed_tabs_label')}>
         <button
           type="button"
           className={`feed-tab ${sort === 'latest' ? 'active' : ''}`}
@@ -508,6 +597,28 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
         </button>
         <button
           type="button"
+          className={`feed-tab ${sort === 'following' ? 'active' : ''}`}
+          data-sort="following"
+          role="tab"
+          aria-selected={sort === 'following'}
+          id="tabFollowing"
+          onClick={() => setSort('following')}
+        >
+          {t('tab_following')}
+        </button>
+        <button
+          type="button"
+          className={`feed-tab ${sort === 'for_you' ? 'active' : ''}`}
+          data-sort="for_you"
+          role="tab"
+          aria-selected={sort === 'for_you'}
+          id="tabForYou"
+          onClick={() => setSort('for_you')}
+        >
+          {t('tab_for_you')}
+        </button>
+        <button
+          type="button"
           className={`feed-tab ${sort === 'daily' ? 'active' : ''}`}
           data-sort="daily"
           role="tab"
@@ -519,7 +630,7 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
         </button>
       </div>
 
-      {!guestLenta && sort !== 'daily' ? (
+      {!guestLenta && sort !== 'daily' && sort !== 'following' && sort !== 'for_you' ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '10px 0 6px' }}>
           <button
             type="button"
@@ -542,7 +653,7 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
         {t('loading_posts')}
       </div>
 
-      <div id="moodFilters" className={`mood-filters ${sort === 'daily' ? 'hidden' : ''}`}>
+      <div id="moodFilters" className={`mood-filters ${sort === 'daily' || sort === 'following' || sort === 'for_you' ? 'hidden' : ''}`}>
         {stats.length > 0 ? (
           <>
             <button
@@ -707,8 +818,34 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
               </div>
             ) : null}
             {!loading && !initialError && posts.length === 0 ? (
-              <div className="text-center" style={{ color: 'var(--text-secondary)', padding: 40 }}>
-                {t('no_posts_feed')}
+              <div className="feed-empty-state">
+                {sort === 'following' ? (
+                  !s.isAuthed ? (
+                    <p>{t('feed_following_login')}</p>
+                  ) : hasFollowing === false ? (
+                    <>
+                      <p>{t('feed_following_empty')}</p>
+                      <Link className="auth-btn feed-empty-state__cta" to="/search">
+                        {t('feed_following_empty_cta')}
+                      </Link>
+                    </>
+                  ) : (
+                    <p>{t('feed_following_no_posts')}</p>
+                  )
+                ) : sort === 'for_you' ? (
+                  !s.isAuthed ? (
+                    <>
+                      <p>{t('feed_for_you_login')}</p>
+                      <Link className="auth-btn feed-empty-state__cta" to="/register">
+                        {t('feed_for_you_login_cta')}
+                      </Link>
+                    </>
+                  ) : (
+                    <p>{t('feed_for_you_empty')}</p>
+                  )
+                ) : (
+                  <p>{t('no_posts_feed')}</p>
+                )}
               </div>
             ) : null}
             {posts.map((p) => (

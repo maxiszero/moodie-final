@@ -14,6 +14,7 @@ from ..mongo import mongo_json, stringify_mongo
 from ..security import hash_password, verify_password
 from ..services.ai import WeeklyPost, weekly_summary_fallback
 from ..services.settings_csv import parse_csv_to_updates, row_to_csv_bytes, user_doc_to_row
+from ..services.telegram_bot import compute_activity_streak
 from .posts import populate_posts, projection_without_private
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -168,6 +169,132 @@ async def update_settings(
         "preferredLanguage": fresh.get("preferredLanguage", "ru"),
         "preferredTheme": fresh.get("preferredTheme", "light"),
     }
+
+
+@router.get("/me/streak")
+async def get_activity_streak(
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+    user: dict[str, Any] = Depends(current_user),
+) -> dict[str, int]:
+    fresh = await db.users.find_one({"_id": user["_id"]}, {"telegramTimezoneOffsetMinutes": 1})
+    streak = await compute_activity_streak(db, fresh or user)
+    return {"streak": streak}
+
+
+def _clamp_hour(value: Any, fallback: int) -> int:
+    try:
+        hour = int(value)
+    except (TypeError, ValueError):
+        return fallback
+    return max(0, min(23, hour))
+
+
+def _telegram_settings_payload(user: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "telegramLinked": user.get("telegramUserId") is not None,
+        "telegramDailyNotify": bool(user.get("telegramDailyNotify")),
+        "telegramActivityNotify": user.get("telegramActivityNotify") is not False,
+        "telegramDailyNotifyHour": _clamp_hour(user.get("telegramDailyNotifyHour"), 8),
+        "telegramEveningNotify": bool(user.get("telegramEveningNotify")),
+        "telegramEveningNotifyHour": _clamp_hour(user.get("telegramEveningNotifyHour"), 21),
+        "telegramTimezoneOffsetMinutes": int(user.get("telegramTimezoneOffsetMinutes") or 0),
+        "telegramQuietHoursEnabled": bool(user.get("telegramQuietHoursEnabled")),
+        "telegramQuietStartHour": _clamp_hour(user.get("telegramQuietStartHour"), 23),
+        "telegramQuietEndHour": _clamp_hour(user.get("telegramQuietEndHour"), 9),
+    }
+
+
+_TELEGRAM_SETTINGS_PROJECTION = {
+    "telegramUserId": 1,
+    "telegramDailyNotify": 1,
+    "telegramActivityNotify": 1,
+    "telegramDailyNotifyHour": 1,
+    "telegramEveningNotify": 1,
+    "telegramEveningNotifyHour": 1,
+    "telegramTimezoneOffsetMinutes": 1,
+    "telegramQuietHoursEnabled": 1,
+    "telegramQuietStartHour": 1,
+    "telegramQuietEndHour": 1,
+}
+
+
+@router.get("/me/telegram-settings")
+async def get_telegram_settings(
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+    user: dict[str, Any] = Depends(current_user),
+) -> dict[str, Any]:
+    fresh = await db.users.find_one({"_id": user["_id"]}, _TELEGRAM_SETTINGS_PROJECTION)
+    if not fresh:
+        raise HTTPException(status_code=404, detail={"message": "User not found"})
+    return _telegram_settings_payload(fresh)
+
+
+@router.patch("/me/telegram-settings")
+async def patch_telegram_settings(
+    body: dict[str, Any],
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+    user: dict[str, Any] = Depends(current_user),
+) -> dict[str, Any]:
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail={"message": "Invalid body"})
+    updates: dict[str, Any] = {}
+    if isinstance(body.get("telegramDailyNotify"), bool):
+        updates["telegramDailyNotify"] = body["telegramDailyNotify"]
+    if isinstance(body.get("telegramActivityNotify"), bool):
+        updates["telegramActivityNotify"] = body["telegramActivityNotify"]
+    if body.get("telegramDailyNotifyHour") is not None:
+        updates["telegramDailyNotifyHour"] = _clamp_hour(body["telegramDailyNotifyHour"], 8)
+    if isinstance(body.get("telegramEveningNotify"), bool):
+        updates["telegramEveningNotify"] = body["telegramEveningNotify"]
+    if body.get("telegramEveningNotifyHour") is not None:
+        updates["telegramEveningNotifyHour"] = _clamp_hour(body["telegramEveningNotifyHour"], 21)
+    if isinstance(body.get("telegramQuietHoursEnabled"), bool):
+        updates["telegramQuietHoursEnabled"] = body["telegramQuietHoursEnabled"]
+    if body.get("telegramQuietStartHour") is not None:
+        updates["telegramQuietStartHour"] = _clamp_hour(body["telegramQuietStartHour"], 23)
+    if body.get("telegramQuietEndHour") is not None:
+        updates["telegramQuietEndHour"] = _clamp_hour(body["telegramQuietEndHour"], 9)
+    if body.get("telegramTimezoneOffsetMinutes") is not None:
+        try:
+            tz = int(body["telegramTimezoneOffsetMinutes"])
+            updates["telegramTimezoneOffsetMinutes"] = max(-840, min(840, tz))
+        except (TypeError, ValueError):
+            pass
+    if not updates:
+        raise HTTPException(status_code=400, detail={"message": "No valid Telegram settings provided"})
+    updates["updatedAt"] = datetime.now(timezone.utc)
+    await db.users.update_one({"_id": user["_id"]}, {"$set": updates})
+    fresh = await db.users.find_one({"_id": user["_id"]}, _TELEGRAM_SETTINGS_PROJECTION)
+    return _telegram_settings_payload(fresh or user)
+
+
+@router.get("/me/blocked")
+async def get_blocked_users(
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+    user: dict[str, Any] = Depends(current_user),
+) -> list[dict[str, Any]]:
+    fresh = await db.users.find_one({"_id": user["_id"]}, {"blockedUsers": 1})
+    ids = (fresh or {}).get("blockedUsers") or []
+    if not ids:
+        return []
+    users = await db.users.find({"_id": {"$in": ids}}, PUBLIC_USER_FIELDS).to_list(None)
+    return [public_user(u) for u in users if u]
+
+
+@router.delete("/me/blocked/{username}")
+async def unblock_user(
+    username: str,
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+    user: dict[str, Any] = Depends(current_user),
+) -> dict[str, str]:
+    target = await db.users.find_one({"username": username}, {"_id": 1})
+    if not target:
+        raise HTTPException(status_code=404, detail={"message": "User not found"})
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$pull": {"blockedUsers": target["_id"]}, "$set": {"updatedAt": datetime.now(timezone.utc)}},
+    )
+    return {"message": "User unblocked"}
 
 
 _SETTINGS_CSV_PROJECTION = {
@@ -380,7 +507,7 @@ async def get_mood_heatmap(
         raise HTTPException(status_code=404, detail={"message": "User not found"})
     one_year_ago = datetime.now(timezone.utc) - timedelta(days=365)
     pipeline = [
-        {"$match": {"userId": user["_id"], "createdAt": {"$gte": one_year_ago}}},
+        {"$match": {"userId": user["_id"], "createdAt": {"$gte": one_year_ago}, "hidden": {"$ne": True}}},
         {
             "$group": {
                 "_id": {"$dateToString": {"format": "%Y-%m-%d", "date": "$createdAt"}},
@@ -391,7 +518,26 @@ async def get_mood_heatmap(
         },
         {"$sort": {"_id": 1}},
     ]
-    return stringify_mongo(await db.posts.aggregate(pipeline).to_list(None))
+    heatmap_from_posts = stringify_mongo(await db.posts.aggregate(pipeline).to_list(None))
+    by_day: dict[str, dict[str, Any]] = {row["_id"]: row for row in heatmap_from_posts}
+    reflection_color = "#C4B5FD"
+    async for ans in db.dailyanswers.find({"userId": user["_id"]}, {"dayKey": 1}):
+        key = ans.get("dayKey")
+        if not isinstance(key, str):
+            continue
+        if key in by_day:
+            by_day[key]["count"] = int(by_day[key].get("count") or 0) + 1
+            emos = by_day[key].get("emotions") or []
+            emos.append({"emotion": "reflection", "emoji": "💭", "color": reflection_color})
+            by_day[key]["emotions"] = emos
+        else:
+            by_day[key] = {
+                "_id": key,
+                "dominantColor": reflection_color,
+                "emotions": [{"emotion": "reflection", "emoji": "💭", "color": reflection_color}],
+                "count": 1,
+            }
+    return sorted(by_day.values(), key=lambda row: str(row.get("_id")))
 
 
 @router.get("/{username}")
@@ -418,6 +564,7 @@ async def get_user_by_username(
     viewer_following = {str(item) for item in (viewer or {}).get("following", [])}
     is_following = bool(viewer and str(target["_id"]) != str(viewer["_id"]) and str(target["_id"]) in viewer_following)
     summary = await resolve_weekly_ai_summary(db, target)
+    activity_streak = await compute_activity_streak(db, target)
 
     user_payload = public_user(target)
     user_payload["weeklyAiSummary"] = summary or ""
@@ -428,4 +575,5 @@ async def get_user_by_username(
         "followingCount": following_count,
         "totalLikesReceived": likes_agg[0]["total"] if likes_agg else 0,
         "isFollowing": is_following,
+        "activityStreak": activity_streak,
     }

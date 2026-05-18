@@ -1,7 +1,7 @@
 import { storageKeys } from '../config/storage'
 import type { Lang } from '../config/storage'
 
-export type TestKind = 'emotions' | 'mbti'
+export type TestKind = 'emotions' | 'mbti' | 'stress'
 
 export type TestHistoryEntry = {
   id: string

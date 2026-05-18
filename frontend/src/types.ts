@@ -34,6 +34,8 @@ export type TelegramSettings = {
   telegramDailyNotify: boolean
   telegramActivityNotify: boolean
   telegramDailyNotifyHour: number
+  telegramEveningNotify: boolean
+  telegramEveningNotifyHour: number
   telegramTimezoneOffsetMinutes: number
   telegramQuietHoursEnabled: boolean
   telegramQuietStartHour: number
@@ -90,6 +92,7 @@ export type AppNotification = {
   type?: string
   message: string
   createdAt?: string
+  href?: string
 }
 
 export type MoodSong = {
@@ -121,6 +124,13 @@ export type Post = {
   reactions?: PostReaction[]
   isFollowingAuthor?: boolean
   commentsCount?: number
+  moodSongTitle?: string
+  moodSongArtist?: string
+  moodSongPreviewUrl?: string
+  moodSongExternalUrl?: string
+  moodSongArtworkUrl?: string
+  moodSongSource?: string
+  updatedAt?: string
 }
 
 export type PostComment = {
@@ -166,6 +176,7 @@ export type ProfilePayload = {
   totalSupportReceived?: number
   badges?: AchievementBadge[]
   isFollowing: boolean
+  activityStreak?: number
 }
 
 export type MoodHeatmapDay = {

@@ -111,6 +111,49 @@ def interleave(primary: list[dict[str, Any]], stable: list[dict[str, Any]], limi
     return output[:limit]
 
 
+def interleave_for_you(
+    following: list[dict[str, Any]],
+    primary: list[dict[str, Any]],
+    stable: list[dict[str, Any]],
+    limit: int,
+) -> list[dict[str, Any]]:
+    output: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def push(post: dict[str, Any]) -> None:
+        pid = str(post.get("_id"))
+        if pid in seen:
+            return
+        seen.add(pid)
+        output.append(post)
+
+    fi = pi = si = 0
+    while len(output) < limit and (fi < len(following) or pi < len(primary) or si < len(stable)):
+        if fi < len(following):
+            push(following[fi])
+            fi += 1
+        if len(output) >= limit:
+            break
+        if pi < len(primary):
+            push(primary[pi])
+            pi += 1
+        if len(output) >= limit:
+            break
+        if si < len(stable):
+            push(stable[si])
+            si += 1
+    while len(output) < limit and pi < len(primary):
+        push(primary[pi])
+        pi += 1
+    while len(output) < limit and fi < len(following):
+        push(following[fi])
+        fi += 1
+    while len(output) < limit and si < len(stable):
+        push(stable[si])
+        si += 1
+    return output[:limit]
+
+
 @router.get("")
 @router.get("/")
 async def get_posts(
@@ -130,9 +173,71 @@ async def get_posts(
         query["userId"] = {"$nin": excluded}
     if emotion:
         query["emotion"] = emotion
+
+    if sort == "following":
+        if not user:
+            raise HTTPException(status_code=401, detail={"message": "Authentication required for following feed"})
+        fresh = await db.users.find_one({"_id": user["_id"]}, {"following": 1, "blockedUsers": 1})
+        following_ids = (fresh or {}).get("following") or []
+        if not following_ids:
+            return []
+        blocked = set(str(x) for x in (fresh or {}).get("blockedUsers") or [])
+        allowed = [uid for uid in following_ids if str(uid) not in blocked and uid not in banned_ids]
+        if not allowed:
+            return []
+        query["userId"] = {"$in": allowed}
+        skip = (page - 1) * limit
+        posts = await db.posts.find(query, projection_without_private()).sort(sort_option).skip(skip).limit(limit).to_list(limit)
+        return await populate_posts(db, posts, user)
+
+    if sort == "for_you":
+        if not user:
+            raise HTTPException(status_code=401, detail={"message": "Authentication required for personalized feed"})
+        fresh = await db.users.find_one({"_id": user["_id"]}, {"following": 1, "currentEmotion": 1, "blockedUsers": 1})
+        blocked = set(str(x) for x in (fresh or {}).get("blockedUsers") or [])
+        base_query: dict[str, Any] = {"hidden": {"$ne": True}}
+        if excluded:
+            base_query["userId"] = {"$nin": excluded}
+        follow_limit = max(1, round(limit * 0.4))
+        primary_limit = max(1, round(limit * 0.35))
+        stable_limit = max(0, limit - follow_limit - primary_limit)
+        following_ids = [
+            uid for uid in ((fresh or {}).get("following") or [])
+            if str(uid) not in blocked and uid not in banned_ids
+        ]
+        user_emotion = normalize_emotion((fresh or user).get("currentEmotion") or "neutral")
+        stable_emotions = [item for item in stabilizers_for_emotion(user_emotion) if item != user_emotion]
+        follow_rows = (
+            await db.posts.find({**base_query, "userId": {"$in": following_ids}}, projection_without_private())
+            .sort(sort_option)
+            .skip((page - 1) * follow_limit)
+            .limit(follow_limit)
+            .to_list(follow_limit)
+            if following_ids
+            else []
+        )
+        primary_rows = await (
+            db.posts.find({**base_query, "emotion": user_emotion}, projection_without_private())
+            .sort(sort_option)
+            .skip((page - 1) * primary_limit)
+            .limit(primary_limit)
+            .to_list(primary_limit)
+        )
+        stable_rows = (
+            await db.posts.find({**base_query, "emotion": {"$in": stable_emotions}}, projection_without_private())
+            .sort(sort_option)
+            .skip((page - 1) * stable_limit)
+            .limit(stable_limit)
+            .to_list(stable_limit)
+            if stable_limit
+            else []
+        )
+        mixed = interleave_for_you(follow_rows, primary_rows, stable_rows, limit)
+        return await populate_posts(db, mixed, user)
+
     skip = (page - 1) * limit
 
-    can_mood_mix = moodMix.strip() == "1" and user is not None and not emotion
+    can_mood_mix = moodMix.strip() == "1" and user is not None and not emotion and sort not in {"following", "for_you"}
     if not can_mood_mix:
         posts = await db.posts.find(query, projection_without_private()).sort(sort_option).skip(skip).limit(limit).to_list(limit)
         return await populate_posts(db, posts, user)
@@ -224,6 +329,7 @@ async def create_post_from_text(db: AsyncIOMotorDatabase, user: dict[str, Any], 
         "commentsCount": 0,
         "createdAt": now,
         "updatedAt": now,
+        **mood_song,
     }
     result = await db.posts.insert_one(doc)
     doc["_id"] = result.inserted_id
@@ -260,6 +366,103 @@ async def create_post(
     if not isinstance(text, str) or not text:
         raise HTTPException(status_code=400, detail={"message": "Please provide text for the post"})
     return await create_post_from_text(db, user, text)
+
+
+@router.get("/{post_id}")
+async def get_post_by_id(
+    post_id: str,
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+    user: dict[str, Any] | None = Depends(optional_user),
+) -> dict[str, Any]:
+    try:
+        oid = ObjectId(post_id)
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail={"message": "Post not found"}) from exc
+    banned_ids = await banned_user_ids(db)
+    excluded = excluded_author_ids(banned_ids, user)
+    post = await db.posts.find_one({"_id": oid, "hidden": {"$ne": True}}, projection_without_private())
+    if not post or post.get("userId") in excluded:
+        raise HTTPException(status_code=404, detail={"message": "Post not found"})
+    author = await db.users.find_one({"_id": post.get("userId")}, {"banned": 1})
+    if not author or author.get("banned"):
+        raise HTTPException(status_code=404, detail={"message": "Post not found"})
+    populated = await populate_posts(db, [post], user)
+    return populated[0]
+
+
+EDIT_WINDOW_MS = 15 * 60 * 1000
+
+
+@router.patch("/{post_id}")
+async def update_post(
+    post_id: str,
+    body: dict[str, Any],
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+    user: dict[str, Any] = Depends(current_user),
+) -> dict[str, Any]:
+    post = await db.posts.find_one({"_id": object_id(post_id), "hidden": {"$ne": True}})
+    if not post:
+        raise HTTPException(status_code=404, detail={"message": "Post not found"})
+    if str(post.get("userId")) != str(user["_id"]):
+        raise HTTPException(status_code=403, detail={"message": "You can only edit your own posts"})
+    created = post.get("createdAt")
+    if isinstance(created, datetime):
+        created_utc = created.replace(tzinfo=timezone.utc) if created.tzinfo is None else created.astimezone(timezone.utc)
+        age_ms = (datetime.now(timezone.utc) - created_utc).total_seconds() * 1000
+        if age_ms > EDIT_WINDOW_MS:
+            raise HTTPException(status_code=400, detail={"message": "Edit window expired (15 minutes)"})
+    text = body.get("text") if isinstance(body, dict) else None
+    if not isinstance(text, str) or not text.strip():
+        raise HTTPException(status_code=400, detail={"message": "Please provide text for the post"})
+    text = text.strip()
+    if len(text) > 228:
+        raise HTTPException(status_code=400, detail={"message": "Post text cannot exceed 228 characters"})
+    if LINK_RE.search(text):
+        raise HTTPException(status_code=400, detail={"message": "Links are not allowed in posts for security reasons"})
+
+    analysis = await analyze_emotion(text)
+    palette = palette_for_emotion(analysis.get("emotion"))
+    if palette:
+        analysis["emotion"] = palette["emotion"]
+        analysis["color"] = palette["color"]
+        analysis["color2"] = palette["color2"]
+        analysis["color3"] = palette["color3"]
+    feed_quality = analysis.get("feedQuality") if isinstance(analysis.get("feedQuality"), (int, float)) else post.get("feedQuality", 65)
+    now = datetime.now(timezone.utc)
+    created_at = post.get("createdAt") or now
+    updates = {
+        "text": text,
+        "emotion": analysis.get("emotion") or "neutral",
+        "emoji": analysis.get("emoji") or "😐",
+        "intensity": analysis.get("intensity") or 50,
+        "color": analysis.get("color") or "#E0E7FF",
+        "color2": analysis.get("color2") or "#A5B4FC",
+        "color3": analysis.get("color3") or "#6366F1",
+        "reasoning": analysis.get("reasoning") or "",
+        "tip": analysis.get("tip") or "",
+        "feedQuality": feed_quality,
+        "feedSortScore": feed_sort_score(created_at if isinstance(created_at, datetime) else now, feed_quality),
+        "updatedAt": now,
+    }
+    await db.posts.update_one({"_id": post["_id"]}, {"$set": updates})
+    latest = await db.posts.find_one({"userId": user["_id"]}, sort=[("createdAt", DESCENDING)], projection={"_id": 1})
+    if latest and str(latest["_id"]) == str(post["_id"]):
+        await db.users.update_one(
+            {"_id": user["_id"]},
+            {
+                "$set": {
+                    "currentEmotion": updates["emotion"],
+                    "currentEmoji": updates["emoji"],
+                    "currentColor": updates["color"],
+                    "currentColor2": updates["color2"],
+                    "currentColor3": updates["color3"],
+                    "updatedAt": now,
+                }
+            },
+        )
+    fresh = {**post, **updates, "_id": post["_id"]}
+    populated = await populate_posts(db, [fresh], user)
+    return populated[0]
 
 
 @router.post("/ai/tip")

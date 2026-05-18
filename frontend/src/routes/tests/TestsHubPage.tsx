@@ -18,6 +18,7 @@ export function TestsHubPage() {
 
   const lastEm = useMemo(() => history.find((h) => h.kind === 'emotions'), [history])
   const lastMb = useMemo(() => history.find((h) => h.kind === 'mbti'), [history])
+  const lastStress = useMemo(() => history.find((h) => h.kind === 'stress'), [history])
 
   return (
     <div id="testsHub" className="tests-hub">
@@ -70,13 +71,25 @@ export function TestsHubPage() {
           </Link>
         </li>
         <li>
-          <div className="tests-card tests-card--soon">
+          <Link to="/tests/stress" className="tests-card tests-card--stress">
+            <div className="tests-card__shine" aria-hidden />
             <span className="tests-card__icon" aria-hidden>
-              ✨
+              🌡️
             </span>
-            <span className="tests-card__title">{t('tests_card_more_title')}</span>
-            <span className="tests-card__desc">{t('tests_card_more_desc')}</span>
-          </div>
+            <span className="tests-card__title">{t('tests_card_stress_title')}</span>
+            <span className="tests-card__desc">{t('tests_card_stress_desc')}</span>
+            {lastStress ? (
+              <div className="tests-card__foot">
+                <span className="tests-card__last-label">{t('tests_last_label')}</span>
+                <span className="tests-card__last-sum">{lastStress.summary}</span>
+                <time className="tests-card__last-when" dateTime={lastStress.completedAt}>
+                  {formatTestCompletedAt(lastStress.completedAt, s.lang)}
+                </time>
+              </div>
+            ) : (
+              <span className="tests-card__badge tests-card__badge--new">{t('tests_not_yet')}</span>
+            )}
+          </Link>
         </li>
       </ul>
 
@@ -88,7 +101,7 @@ export function TestsHubPage() {
             {history.slice(0, 20).map((h) => (
               <li key={h.id} className="tests-history__item">
                 <span className="tests-history__icon" aria-hidden>
-                  {h.kind === 'emotions' ? '🎭' : '🧩'}
+                  {h.kind === 'emotions' ? '🎭' : h.kind === 'mbti' ? '🧩' : '🌡️'}
                 </span>
                 <div className="tests-history__body">
                   <div className="tests-history__summary">{h.summary}</div>

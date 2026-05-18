@@ -2777,6 +2777,10 @@
             background: linear-gradient(135deg, rgba(16, 185, 129, 0.14), rgba(59, 130, 246, 0.1));
         }
 
+        .tests-card--stress .tests-card__shine {
+            background: linear-gradient(135deg, rgba(251, 146, 60, 0.16), rgba(244, 63, 94, 0.1));
+        }
+
         a.tests-card:hover {
             transform: translateY(-3px);
             border-color: rgba(99, 102, 241, 0.35);
@@ -3411,6 +3415,217 @@
             font-size: 0.78rem;
             color: var(--text-secondary);
             font-variant-numeric: tabular-nums;
+        }
+
+        .tests-run--stress .tests-stress-scale {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            width: 100%;
+        }
+
+        @media (min-width: 520px) {
+            .tests-run--stress .tests-stress-scale {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+            }
+        }
+
+        .tests-stress-opt {
+            padding: 10px 8px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: var(--surface-tint);
+            color: var(--text-primary);
+            font-size: 0.82rem;
+            font-weight: 600;
+            line-height: 1.25;
+            cursor: pointer;
+            transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+        }
+
+        .tests-stress-opt:hover {
+            border-color: rgba(251, 146, 60, 0.45);
+            transform: translateY(-1px);
+        }
+
+        .tests-stress-opt.is-selected {
+            border-color: rgba(244, 63, 94, 0.55);
+            background: linear-gradient(135deg, rgba(251, 146, 60, 0.18), rgba(244, 63, 94, 0.12));
+            box-shadow: 0 6px 18px rgba(244, 63, 94, 0.12);
+        }
+
+        .tests-stress-result {
+            margin: 8px 0 20px;
+            padding: 24px 20px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .tests-stress-result--low {
+            background: linear-gradient(180deg, rgba(16, 185, 129, 0.12), var(--card-bg));
+        }
+
+        .tests-stress-result--moderate {
+            background: linear-gradient(180deg, rgba(251, 146, 60, 0.14), var(--card-bg));
+        }
+
+        .tests-stress-result--high {
+            background: linear-gradient(180deg, rgba(244, 63, 94, 0.14), var(--card-bg));
+        }
+
+        .tests-stress-result__score {
+            font-size: 2.4rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .tests-stress-result__band {
+            font-size: 1.15rem;
+            font-weight: 750;
+            margin-bottom: 10px;
+        }
+
+        .tests-stress-result__hint {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 0.92rem;
+            line-height: 1.5;
+        }
+
+        .feed-tabs--scroll {
+            flex-wrap: wrap;
+            max-width: 100%;
+            width: 100%;
+        }
+
+        .mood-neighbors {
+            margin-top: 12px;
+        }
+
+        .mood-neighbors__toggle {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            color: inherit;
+            cursor: pointer;
+            text-align: left;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .mood-neighbors__toggle:hover,
+        .mood-neighbors__toggle.is-open {
+            border-color: rgba(99, 102, 241, 0.35);
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.08);
+        }
+
+        .mood-neighbors__toggle-icon {
+            font-size: 1.4rem;
+            line-height: 1;
+        }
+
+        .mood-neighbors__toggle-text {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .mood-neighbors__toggle-text strong {
+            font-size: 0.95rem;
+        }
+
+        .mood-neighbors__toggle-text small {
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+        }
+
+        .mood-neighbors__count {
+            min-width: 28px;
+            height: 28px;
+            padding: 0 8px;
+            border-radius: 999px;
+            background: var(--primary-btn);
+            color: #fff;
+            font-size: 0.82rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mood-neighbors__body {
+            margin-top: 10px;
+            padding: 14px 16px 16px;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            background: linear-gradient(180deg, var(--surface-tint), var(--card-bg));
+        }
+
+        .mood-neighbors__lead {
+            margin: 0 0 8px;
+            font-weight: 650;
+            line-height: 1.45;
+        }
+
+        .mood-neighbors__hint {
+            margin: 0 0 10px;
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            line-height: 1.45;
+        }
+
+        .mood-neighbors__err {
+            color: var(--danger, #dc2626);
+            font-size: 0.85rem;
+        }
+
+        .mood-neighbors__list {
+            list-style: none;
+            margin: 0 0 12px;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .mood-neighbors__item {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+        }
+
+        .mood-neighbors__emoji {
+            font-size: 1.25rem;
+            line-height: 1;
+        }
+
+        .mood-neighbors__quote p {
+            margin: 0;
+            font-size: 0.88rem;
+            line-height: 1.45;
+        }
+
+        .mood-neighbors__ago {
+            display: block;
+            margin-top: 4px;
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+        }
+
+        .mood-neighbors__refresh {
+            width: 100%;
         }
 
         .main-content {
@@ -5316,4 +5531,388 @@
         .author-link:hover {
             color: var(--accent);
             text-decoration: underline;
+        }
+
+        .mood-week-widget {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 14px 16px;
+            margin-bottom: 16px;
+        }
+
+        .mood-week-widget__head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .mood-week-widget__title {
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+
+        .mood-week-widget__link {
+            font-size: 0.82rem;
+            color: var(--accent);
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .mood-week-widget__grid {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .mood-week-widget__cell-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .mood-week-widget__cell {
+            width: 100%;
+            max-width: 32px;
+            aspect-ratio: 1;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .mood-week-widget__label {
+            margin-top: 4px;
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+        }
+
+        .post-mood-song {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+            padding: 10px 12px;
+            border-radius: var(--radius-md);
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .post-mood-song--compact {
+            padding: 8px 10px;
+        }
+
+        .post-mood-song__art {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        .post-mood-song__meta {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .post-mood-song__track {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .post-mood-song__play {
+            flex-shrink: 0;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border-radius: var(--radius-full);
+            padding: 6px 12px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .post-edit-box__input {
+            width: 100%;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 10px 12px;
+            font: inherit;
+            resize: vertical;
+            background: var(--bg-color);
+            color: var(--text-primary);
+        }
+
+        .post-edit-box__actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .auth-btn--ghost {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .tg-onboarding-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1200;
+            background: rgba(0, 0, 0, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .tg-onboarding-card {
+            width: min(420px, 100%);
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 22px 20px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .tg-onboarding-card h2 {
+            margin: 0 0 8px;
+            font-size: 1.15rem;
+        }
+
+        .tg-onboarding-lead {
+            margin: 0 0 16px;
+            color: var(--text-secondary);
+            font-size: 0.92rem;
+            line-height: 1.45;
+        }
+
+        .tg-onboarding-steps {
+            margin: 0 0 18px;
+            padding-left: 18px;
+            display: grid;
+            gap: 12px;
+        }
+
+        .tg-onboarding-steps li {
+            display: grid;
+            gap: 2px;
+        }
+
+        .tg-onboarding-steps li span {
+            color: var(--text-secondary);
+            font-size: 0.88rem;
+            line-height: 1.4;
+        }
+
+        .tg-onboarding-steps__done strong {
+            color: var(--accent);
+        }
+
+        .tg-onboarding-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .tg-onboarding-btn {
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border-radius: var(--radius-full);
+            padding: 10px 16px;
+            font: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tg-onboarding-btn--primary {
+            background: var(--primary-btn);
+            color: #fff;
+            border-color: transparent;
+        }
+
+        /* —— Feed following, pull hint, empty states —— */
+        .feed-pull-hint {
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            padding: 6px 0 2px;
+            transition: transform 0.15s ease;
+        }
+
+        .feed-empty-state {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 40px 20px;
+        }
+
+        .feed-empty-state__cta {
+            display: inline-block;
+            margin-top: 14px;
+            text-decoration: none;
+        }
+
+        /* —— Streak —— */
+        .profile-streak,
+        .mood-week-widget__streak {
+            margin-left: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .profile-share-btn {
+            margin-top: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border-radius: var(--radius-full);
+            padding: 6px 14px;
+            font: inherit;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        /* —— Notification bell —— */
+        .notif-bell {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .notif-bell__btn {
+            position: relative;
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            padding: 6px;
+            cursor: pointer;
+            border-radius: 8px;
+        }
+
+        .notif-bell__btn:hover {
+            background: var(--surface-tint);
+        }
+
+        .notif-bell__badge {
+            position: absolute;
+            top: 0;
+            right: 0;
+            min-width: 16px;
+            height: 16px;
+            padding: 0 4px;
+            border-radius: 999px;
+            background: #ef4444;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 16px;
+            text-align: center;
+        }
+
+        .notif-bell__panel {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: min(320px, 90vw);
+            max-height: 360px;
+            overflow: auto;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            z-index: 1200;
+            padding: 10px 0;
+        }
+
+        .notif-bell__head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 14px 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .notif-bell__clear {
+            border: none;
+            background: none;
+            color: var(--text-secondary);
+            font: inherit;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        .notif-bell__empty {
+            padding: 12px 14px;
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .notif-bell__list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .notif-bell__item {
+            width: 100%;
+            border: none;
+            background: none;
+            text-align: left;
+            padding: 10px 14px;
+            cursor: pointer;
+            color: var(--text-primary);
+            font: inherit;
+        }
+
+        .notif-bell__item:hover {
+            background: var(--surface-tint);
+        }
+
+        .notif-bell__msg {
+            display: block;
+            font-size: 0.85rem;
+            line-height: 1.35;
+        }
+
+        .notif-bell__time {
+            display: block;
+            margin-top: 4px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* —— Settings blocked list —— */
+        .settings-blocked-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .settings-blocked-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .settings-blocked-row:last-child {
+            border-bottom: none;
         }

@@ -190,6 +190,22 @@ const userSchema = new mongoose.Schema({
     maxlength: 16,
     trim: true,
   },
+  telegramEveningNotify: {
+    type: Boolean,
+    default: false,
+  },
+  telegramEveningNotifyHour: {
+    type: Number,
+    default: 21,
+    min: 0,
+    max: 23,
+  },
+  lastEveningReviewDayKey: {
+    type: String,
+    default: '',
+    maxlength: 16,
+    trim: true,
+  },
 }, {
   timestamps: true
 });

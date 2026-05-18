@@ -60,7 +60,14 @@ const getPosts = async (req, res, next) => {
   try {
     scheduleFeedSortBackfill();
 
-    const sortMode = req.query.sort === 'trending' ? 'trending' : 'latest';
+    const sortMode =
+      req.query.sort === 'trending'
+        ? 'trending'
+        : req.query.sort === 'following'
+          ? 'following'
+          : req.query.sort === 'for_you'
+            ? 'for_you'
+            : 'latest';
     const emotionFilter = req.query.emotion;
     const moodMix = String(req.query.moodMix || '').trim() === '1';
     const page = parseInt(req.query.page) || 1;
@@ -92,6 +99,23 @@ const getPosts = async (req, res, next) => {
 
     if (emotionFilter) {
       query.emotion = emotionFilter;
+    }
+
+    if (sortMode === 'following') {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required for following feed' });
+      }
+      const me = await User.findById(req.user.id).select('following blockedUsers');
+      const followingIds = (me?.following || []).map((id) => id.toString());
+      if (!followingIds.length) {
+        return res.status(200).json([]);
+      }
+      const blockedIds = (me?.blockedUsers || []).map((id) => id.toString());
+      const allowed = followingIds.filter((id) => !bannedIds.includes(id) && !blockedIds.includes(id));
+      if (!allowed.length) {
+        return res.status(200).json([]);
+      }
+      query.userId = { $in: allowed };
     }
 
     function stabilizersForEmotion(e) {
@@ -130,46 +154,128 @@ const getPosts = async (req, res, next) => {
       return out;
     }
 
+    function interleaveForYou(following, primary, stable, max) {
+      const out = [];
+      const seen = new Set();
+      const push = (p) => {
+        if (!p) return;
+        const id = p._id.toString();
+        if (seen.has(id)) return;
+        seen.add(id);
+        out.push(p);
+      };
+      let fi = 0;
+      let pi = 0;
+      let si = 0;
+      while (out.length < max && (fi < following.length || pi < primary.length || si < stable.length)) {
+        if (fi < following.length) push(following[fi++]);
+        if (out.length >= max) break;
+        if (pi < primary.length) push(primary[pi++]);
+        if (out.length >= max) break;
+        if (si < stable.length) push(stable[si++]);
+      }
+      while (out.length < max && pi < primary.length) push(primary[pi++]);
+      while (out.length < max && fi < following.length) push(following[fi++]);
+      while (out.length < max && si < stable.length) push(stable[si++]);
+      return out;
+    }
+
     let posts;
-    const canMoodMix = Boolean(moodMix && req.user && !emotionFilter);
-    if (!canMoodMix) {
-      posts = await Post.find(query)
-        .populate('userId', 'username currentEmotion currentEmoji currentColor currentColor2 currentColor3')
-        .sort(sortOption)
-        .skip(skip)
-        .limit(limit);
-    } else {
-      const userEmotion = normalizeEmotion(req.user.currentEmotion || 'neutral');
-      const stableEmotions = stabilizersForEmotion(userEmotion).filter((x) => x !== userEmotion);
+    if (sortMode === 'for_you') {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required for personalized feed' });
+      }
+      const me = await User.findById(req.user.id).select('following currentEmotion blockedUsers');
+      const blockedIds = (me?.blockedUsers || []).map((id) => id.toString());
+      const excludedSet = new Set([...bannedIds.map(String), ...blockedIds]);
+      const base = { hidden: { $ne: true } };
+      if (excludedSet.size) {
+        base.userId = { $nin: [...excludedSet] };
+      }
 
-      const primaryLimit = Math.max(1, Math.ceil(limit * 0.7));
-      const stableLimit = Math.max(0, limit - primaryLimit);
-
+      const followLimit = Math.max(1, Math.ceil(limit * 0.4));
+      const primaryLimit = Math.max(1, Math.ceil(limit * 0.35));
+      const stableLimit = Math.max(0, limit - followLimit - primaryLimit);
+      const followSkip = (page - 1) * followLimit;
       const primarySkip = (page - 1) * primaryLimit;
       const stableSkip = (page - 1) * stableLimit;
 
-      const base = { ...query };
-      const primaryQuery = { ...base, emotion: userEmotion };
-      const stableQuery = stableLimit
-        ? { ...base, emotion: { $in: stableEmotions } }
-        : null;
+      const followingIds = (me?.following || [])
+        .map((id) => id.toString())
+        .filter((id) => !excludedSet.has(id));
+      const userEmotion = normalizeEmotion(me?.currentEmotion || 'neutral');
+      const stableEmotions = stabilizersForEmotion(userEmotion).filter((x) => x !== userEmotion);
+      const populateFields =
+        'username currentEmotion currentEmoji currentColor currentColor2 currentColor3';
 
-      const [primaryRows, stableRows] = await Promise.all([
+      const followQuery = followingIds.length ? { ...base, userId: { $in: followingIds } } : null;
+      const primaryQuery = { ...base, emotion: userEmotion };
+      const stableQuery = stableLimit ? { ...base, emotion: { $in: stableEmotions } } : null;
+
+      const [followRows, primaryRows, stableRows] = await Promise.all([
+        followQuery
+          ? Post.find(followQuery)
+              .populate('userId', populateFields)
+              .sort(sortOption)
+              .skip(followSkip)
+              .limit(followLimit)
+          : Promise.resolve([]),
         Post.find(primaryQuery)
-          .populate('userId', 'username currentEmotion currentEmoji currentColor currentColor2 currentColor3')
+          .populate('userId', populateFields)
           .sort(sortOption)
           .skip(primarySkip)
           .limit(primaryLimit),
         stableQuery
           ? Post.find(stableQuery)
-              .populate('userId', 'username currentEmotion currentEmoji currentColor currentColor2 currentColor3')
+              .populate('userId', populateFields)
               .sort(sortOption)
               .skip(stableSkip)
               .limit(stableLimit)
           : Promise.resolve([]),
       ]);
 
-      posts = interleave(primaryRows, stableRows);
+      posts = interleaveForYou(followRows, primaryRows, stableRows, limit);
+    } else {
+      const canMoodMix = Boolean(
+        moodMix && req.user && !emotionFilter && sortMode !== 'following' && sortMode !== 'for_you',
+      );
+      if (!canMoodMix) {
+        posts = await Post.find(query)
+          .populate('userId', 'username currentEmotion currentEmoji currentColor currentColor2 currentColor3')
+          .sort(sortOption)
+          .skip(skip)
+          .limit(limit);
+      } else {
+        const userEmotion = normalizeEmotion(req.user.currentEmotion || 'neutral');
+        const stableEmotions = stabilizersForEmotion(userEmotion).filter((x) => x !== userEmotion);
+
+        const primaryLimit = Math.max(1, Math.ceil(limit * 0.7));
+        const stableLimit = Math.max(0, limit - primaryLimit);
+
+        const primarySkip = (page - 1) * primaryLimit;
+        const stableSkip = (page - 1) * stableLimit;
+
+        const base = { ...query };
+        const primaryQuery = { ...base, emotion: userEmotion };
+        const stableQuery = stableLimit ? { ...base, emotion: { $in: stableEmotions } } : null;
+
+        const [primaryRows, stableRows] = await Promise.all([
+          Post.find(primaryQuery)
+            .populate('userId', 'username currentEmotion currentEmoji currentColor currentColor2 currentColor3')
+            .sort(sortOption)
+            .skip(primarySkip)
+            .limit(primaryLimit),
+          stableQuery
+            ? Post.find(stableQuery)
+                .populate('userId', 'username currentEmotion currentEmoji currentColor currentColor2 currentColor3')
+                .sort(sortOption)
+                .skip(stableSkip)
+                .limit(stableLimit)
+            : Promise.resolve([]),
+        ]);
+
+        posts = interleave(primaryRows, stableRows);
+      }
     }
 
     // Add isFollowingAuthor field to each post
@@ -324,6 +430,7 @@ const createPost = async (req, res, next) => {
       tip,
       feedQuality: fq,
       userId: req.user.id,
+      ...(moodSong || {}),
     });
 
     await User.findByIdAndUpdate(req.user.id, {
@@ -452,7 +559,7 @@ const toggleReaction = async (req, res, next) => {
 
     if (existingReactionIndex === -1 && post.userId.toString() !== userId) {
       const author = await User.findById(post.userId).select(
-        'telegramDailyNotify telegramActivityNotify telegramChatId telegramUserId preferredLanguage banned lastTelegramActivityNotifyAt telegramTimezoneOffsetMinutes telegramQuietHoursEnabled telegramQuietStartHour telegramQuietEndHour',
+        'username telegramDailyNotify telegramActivityNotify telegramChatId telegramUserId preferredLanguage banned lastTelegramActivityNotifyAt telegramTimezoneOffsetMinutes telegramQuietHoursEnabled telegramQuietStartHour telegramQuietEndHour',
       );
       if (author && !author.banned) {
         const text = msg(
@@ -461,7 +568,9 @@ const toggleReaction = async (req, res, next) => {
           `💜 ${req.user.username} supported your post on Moodie.`,
         );
         notifyTelegramUser(author, text, 'reaction');
-        notifyInAppUser(req.io, author._id, text, 'reaction');
+        notifyInAppUser(req.io, author._id, text, 'reaction', {
+          href: `#/profile/${encodeURIComponent(author.username)}?post=${post._id}`,
+        });
       }
     }
 
@@ -520,7 +629,7 @@ const toggleRelatable = async (req, res, next) => {
     await post.save();
     if (index === -1 && post.userId.toString() !== userId) {
       const author = await User.findById(post.userId).select(
-        'telegramDailyNotify telegramActivityNotify telegramChatId telegramUserId preferredLanguage banned lastTelegramActivityNotifyAt telegramTimezoneOffsetMinutes telegramQuietHoursEnabled telegramQuietStartHour telegramQuietEndHour',
+        'username telegramDailyNotify telegramActivityNotify telegramChatId telegramUserId preferredLanguage banned lastTelegramActivityNotifyAt telegramTimezoneOffsetMinutes telegramQuietHoursEnabled telegramQuietStartHour telegramQuietEndHour',
       );
       if (author && !author.banned) {
         const milestone = [3, 5, 10].includes(post.relatable) ? post.relatable : null;
@@ -537,7 +646,9 @@ const toggleRelatable = async (req, res, next) => {
               `🤝 ${req.user.username} felt your post too on Moodie.`,
             );
         notifyTelegramUser(author, text, type);
-        notifyInAppUser(req.io, author._id, text, type);
+        notifyInAppUser(req.io, author._id, text, type, {
+          href: `#/profile/${encodeURIComponent(author.username)}?post=${post._id}`,
+        });
       }
     }
     res.json({ relatable: post.relatable, relatableBy: post.relatableBy });
@@ -573,6 +684,81 @@ const reportPost = async (req, res, next) => {
   }
 };
 
+// @desc    Update post text (within 15 minutes of creation)
+// @route   PATCH /api/posts/:id
+// @access  Private
+const EDIT_WINDOW_MS = 15 * 60 * 1000;
+
+const updatePost = async (req, res, next) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+    if (post.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You can only edit your own posts' });
+    }
+    const ageMs = Date.now() - new Date(post.createdAt).getTime();
+    if (ageMs > EDIT_WINDOW_MS) {
+      return res.status(400).json({ message: 'Edit window expired (15 minutes)' });
+    }
+
+    const { text } = req.body;
+    if (!text || typeof text !== 'string') {
+      return res.status(400).json({ message: 'Please provide text for the post' });
+    }
+    if (text.length > 228) {
+      return res.status(400).json({ message: 'Post text cannot exceed 228 characters' });
+    }
+    const linkRegex = /(https?:\/\/\S+|www\.\S+)/gi;
+    if (linkRegex.test(text)) {
+      return res.status(400).json({ message: 'Links are not allowed in posts for security reasons' });
+    }
+
+    let { emotion, emoji, intensity, color, color2, color3, reasoning, tip, feedQuality } =
+      await analyzeEmotion(text);
+    const pal = paletteForEmotion(emotion);
+    if (pal) {
+      emotion = pal.emotion;
+      color = pal.color;
+      color2 = pal.color2;
+      color3 = pal.color3;
+    }
+    const fq = typeof feedQuality === 'number' && !Number.isNaN(feedQuality) ? feedQuality : post.feedQuality ?? 65;
+
+    post.text = text;
+    post.emotion = emotion;
+    post.emoji = emoji;
+    post.intensity = intensity;
+    post.color = color;
+    post.color2 = color2;
+    post.color3 = color3;
+    post.reasoning = reasoning;
+    post.tip = tip;
+    post.feedQuality = fq;
+    await post.save();
+
+    const latest = await Post.findOne({ userId: req.user._id }).sort({ createdAt: -1 }).select('_id');
+    if (latest && latest._id.toString() === post._id.toString()) {
+      await User.findByIdAndUpdate(req.user.id, {
+        currentEmotion: emotion,
+        currentEmoji: emoji,
+        currentColor: color,
+        currentColor2: color2,
+        currentColor3: color3,
+      });
+    }
+
+    const populatedPost = await post.populate('userId', 'username currentEmotion currentEmoji currentColor currentColor2 currentColor3');
+    const postObj = populatedPost.toObject();
+    postObj.isFollowingAuthor = false;
+
+    res.json(postObj);
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Get AI Tip for draft text
 // @route   POST /api/posts/ai/tip
 // @access  Private
@@ -588,11 +774,39 @@ const getAiTip = async (req, res, next) => {
   }
 };
 
+const getPostById = async (req, res, next) => {
+  try {
+    const post = await Post.findOne({ _id: req.params.id, hidden: { $ne: true } }).populate(
+      'userId',
+      'username currentEmotion currentEmoji currentColor currentColor2 currentColor3 banned',
+    );
+    if (!post || !post.userId || post.userId.banned) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+    let userFollowing = [];
+    if (req.user) {
+      const user = await User.findById(req.user.id).select('following blockedUsers');
+      if (user?.blockedUsers?.some((id) => id.toString() === String(post.userId._id || post.userId))) {
+        return res.status(404).json({ message: 'Post not found' });
+      }
+      userFollowing = (user?.following || []).map((id) => id.toString());
+    }
+    const postObj = post.toObject();
+    const authorId = post.userId._id ? post.userId._id.toString() : String(post.userId);
+    postObj.isFollowingAuthor = authorId ? userFollowing.includes(authorId) : false;
+    res.json(postObj);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getPosts,
+  getPostById,
   getMoodStats,
   searchPosts,
   createPost,
+  updatePost,
   toggleLike,
   toggleReaction,
   toggleRelatable,

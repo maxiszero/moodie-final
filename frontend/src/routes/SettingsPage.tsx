@@ -1,12 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiFetch, type ApiError } from '../api/apiClient'
+import { API_URL } from '../config/apiUrl'
+import { getToken } from '../config/storage'
 import { useSession } from '../state/SessionContext'
-import type { Lang, TelegramSettings, Theme } from '../types'
+import type { Lang, PublicUser, TelegramSettings, Theme } from '../types'
 import { t } from '../i18n/i18n'
 import {
+  getActivityNotifyEnabled,
   getDailyNotifyEnabled,
+  requestActivityNotifyPermission,
   requestDailyNotifyPermission,
+  setActivityNotifyEnabled,
   setDailyNotifyEnabled,
 } from '../ui/dailyNotifications'
 import { isTelegramMiniApp } from '../telegram/webApp'
@@ -22,11 +27,95 @@ export function SettingsPage() {
   const [pwdMsg, setPwdMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   const [pwdSaving, setPwdSaving] = useState(false)
   const [dailyNotify, setDailyNotify] = useState(() => getDailyNotifyEnabled())
+  const [activityNotify, setActivityNotify] = useState(() => getActivityNotifyEnabled())
   const [dailyNotifyHint, setDailyNotifyHint] = useState<'granted' | 'denied' | null>(null)
+  const [activityNotifyHint, setActivityNotifyHint] = useState<'granted' | 'denied' | null>(null)
+  const [csvMsg, setCsvMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+  const [csvBusy, setCsvBusy] = useState(false)
+  const csvInputRef = useRef<HTMLInputElement>(null)
+  const [blockedUsers, setBlockedUsers] = useState<PublicUser[]>([])
+  const [blockedBusy, setBlockedBusy] = useState<string | null>(null)
   const [tgBusy, setTgBusy] = useState(false)
   const [tgMsg, setTgMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   const [tgSettings, setTgSettings] = useState<TelegramSettings | null>(null)
   const [tgSettingsSaving, setTgSettingsSaving] = useState(false)
+
+  useEffect(() => {
+    if (!s.isAuthed) return
+    let alive = true
+    apiFetch<PublicUser[]>('/users/me/blocked', { auth: true })
+      .then((rows) => {
+        if (alive) setBlockedUsers(Array.isArray(rows) ? rows : [])
+      })
+      .catch(() => {
+        if (alive) setBlockedUsers([])
+      })
+    return () => {
+      alive = false
+    }
+  }, [s.isAuthed])
+
+  const exportCsv = async () => {
+    setCsvBusy(true)
+    setCsvMsg(null)
+    try {
+      const token = getToken()
+      const r = await fetch(`${API_URL}/users/me/settings/export`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!r.ok) throw new Error(`${r.status}`)
+      const blob = await r.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'moodie_settings.csv'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setCsvMsg({ kind: 'err', text: t('settings_csv_import_err') })
+    } finally {
+      setCsvBusy(false)
+    }
+  }
+
+  const importCsv = async (file: File) => {
+    setCsvBusy(true)
+    setCsvMsg(null)
+    try {
+      const token = getToken()
+      const fd = new FormData()
+      fd.append('file', file)
+      const r = await fetch(`${API_URL}/users/me/settings/import`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      })
+      const data = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(data?.message || `${r.status}`)
+      if (data.preferredLanguage) s.setLang(data.preferredLanguage)
+      if (data.preferredTheme) s.setTheme(data.preferredTheme)
+      setCsvMsg({ kind: 'ok', text: t('settings_csv_import_ok') })
+    } catch {
+      setCsvMsg({ kind: 'err', text: t('settings_csv_import_err') })
+    } finally {
+      setCsvBusy(false)
+      if (csvInputRef.current) csvInputRef.current.value = ''
+    }
+  }
+
+  const unblock = async (name: string) => {
+    setBlockedBusy(name)
+    try {
+      await apiFetch(`/users/me/blocked/${encodeURIComponent(name)}`, { method: 'DELETE' })
+      setBlockedUsers((prev) => prev.filter((u) => u.username !== name))
+      setMsg(t('settings_blocked_unblocked'))
+      setTimeout(() => setMsg(''), 2000)
+    } catch {
+      /* ignore */
+    } finally {
+      setBlockedBusy(null)
+    }
+  }
 
   useEffect(() => {
     if (!s.isAuthed) return
@@ -267,6 +356,32 @@ export function SettingsPage() {
               <label className="settings-option">
                 <input
                   type="checkbox"
+                  checked={tgSettings.telegramEveningNotify}
+                  disabled={tgSettingsSaving}
+                  onChange={(e) => void patchTelegramSettings({ telegramEveningNotify: e.target.checked })}
+                />
+                <span>{t('settings_tg_evening_toggle')}</span>
+              </label>
+              <div className="settings-field">
+                <label htmlFor="tgEveningHour">{t('settings_tg_evening_hour')}</label>
+                <select
+                  id="tgEveningHour"
+                  className="settings-select"
+                  value={tgSettings.telegramEveningNotifyHour}
+                  disabled={tgSettingsSaving || !tgSettings.telegramEveningNotify}
+                  onChange={(e) => void patchTelegramSettings({ telegramEveningNotifyHour: Number(e.target.value) })}
+                >
+                  {Array.from({ length: 24 }, (_, hour) => (
+                    <option key={hour} value={hour}>
+                      {String(hour).padStart(2, '0')}:00
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="settings-hint">{t('settings_tg_schedule_hint')}</p>
+              <label className="settings-option">
+                <input
+                  type="checkbox"
                   checked={tgSettings.telegramQuietHoursEnabled}
                   disabled={tgSettingsSaving}
                   onChange={(e) => void patchTelegramSettings({ telegramQuietHoursEnabled: e.target.checked })}
@@ -362,6 +477,98 @@ export function SettingsPage() {
         {dailyNotifyHint === 'granted' ? (
           <p className="settings-inline-msg ok">{t('settings_daily_notify_on')}</p>
         ) : null}
+      </div>
+
+      <div className="settings-card">
+        <h3>{t('settings_activity_notify_title')}</h3>
+        <p className="settings-hint">{t('settings_activity_notify_desc')}</p>
+        <label className="settings-option" style={{ marginTop: 8 }}>
+          <input
+            type="checkbox"
+            checked={activityNotify}
+            onChange={(e) => {
+              const on = e.target.checked
+              setActivityNotify(on)
+              setActivityNotifyEnabled(on)
+              if (!on) setActivityNotifyHint(null)
+            }}
+          />
+          <span>{activityNotify ? t('settings_activity_notify_disable') : t('settings_activity_notify_enable')}</span>
+        </label>
+        <button
+          type="button"
+          className="btn-secondary"
+          style={{ marginTop: 12, width: '100%' }}
+          onClick={async () => {
+            setActivityNotifyHint(null)
+            const p = await requestActivityNotifyPermission()
+            setActivityNotify(getActivityNotifyEnabled())
+            if (p === 'denied') setActivityNotifyHint('denied')
+            else if (p === 'granted') setActivityNotifyHint('granted')
+          }}
+        >
+          {t('settings_daily_notify_test')}
+        </button>
+        {activityNotifyHint === 'denied' ? (
+          <p className="settings-inline-msg err">{t('settings_daily_notify_denied')}</p>
+        ) : null}
+        {activityNotifyHint === 'granted' ? (
+          <p className="settings-inline-msg ok">{t('settings_daily_notify_on')}</p>
+        ) : null}
+      </div>
+
+      <div className="settings-card">
+        <h3>{t('settings_csv_title')}</h3>
+        <p className="settings-hint">{t('settings_csv_desc')}</p>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
+          <button type="button" className="btn-secondary" disabled={csvBusy} onClick={() => void exportCsv()}>
+            {t('settings_csv_export')}
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={csvBusy}
+            onClick={() => csvInputRef.current?.click()}
+          >
+            {t('settings_csv_import')}
+          </button>
+          <input
+            ref={csvInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) void importCsv(f)
+            }}
+          />
+        </div>
+        {csvMsg ? (
+          <p className={`settings-inline-msg ${csvMsg.kind === 'ok' ? 'ok' : 'err'}`}>{csvMsg.text}</p>
+        ) : null}
+      </div>
+
+      <div className="settings-card">
+        <h3>{t('settings_blocked_title')}</h3>
+        {blockedUsers.length === 0 ? (
+          <p className="settings-hint">{t('settings_blocked_empty')}</p>
+        ) : (
+          <ul className="settings-blocked-list">
+            {blockedUsers.map((u) => (
+              <li key={u._id} className="settings-blocked-row">
+                <span>@{u.username}</span>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={blockedBusy === u.username}
+                  onClick={() => void unblock(u.username)}
+                >
+                  {t('settings_blocked_unblock')}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="settings-card">

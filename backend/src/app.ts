@@ -74,6 +74,11 @@ export function createApp(context: AppContext = {}) {
   app.use('/api/admin', require('./routes/admin'));
   app.use('/api/daily-question', require('./routes/dailyQuestion'));
   app.use('/api/mood-song', require('./routes/moodSong'));
+  app.use('/api/mood-neighbors', require('./routes/moodNeighbors'));
+
+  const { shareProfile, sharePost } = require('./controllers/shareController');
+  app.get('/share/profile/:username', shareProfile);
+  app.get('/share/post/:postId', sharePost);
 
   app.get('/', (_req, res) => {
     res.send('Moodie API is running...');

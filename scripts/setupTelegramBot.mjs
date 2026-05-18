@@ -56,7 +56,15 @@ await callTelegram('setMyCommands', {
     },
     {
       command: 'cancel',
-      description: 'Cancel pending /post',
+      description: 'Cancel pending /post or /answer',
+    },
+    {
+      command: 'answer',
+      description: "Answer today's reflection question",
+    },
+    {
+      command: 'feed',
+      description: 'Last 3 posts from the Moodie feed',
     },
     {
       command: 'today',
@@ -67,8 +75,20 @@ await callTelegram('setMyCommands', {
       description: 'Your current mood song preview',
     },
     {
+      command: 'status',
+      description: 'Mood, streak, last post, notifications',
+    },
+    {
+      command: 'daily',
+      description: 'Daily question reminders on or off',
+    },
+    {
+      command: 'activity',
+      description: 'Activity alerts on or off',
+    },
+    {
       command: 'notify',
-      description: 'Notifications: daily/activity on or off',
+      description: 'All notifications on or off',
     },
     {
       command: 'settings',

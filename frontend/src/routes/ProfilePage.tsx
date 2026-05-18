@@ -16,6 +16,9 @@ import { PostCard } from '../components/PostCard'
 import { t, getLang } from '../i18n/i18n'
 import { setGettingStartedTaskDone } from '../ui/gettingStarted'
 import { moodBannerLinearGradient, moodLinearGradient135 } from '../ui/moodGradientStyle'
+import { streakLabel } from '../ui/streakLabel'
+import { shareProfileUrl } from '../config/site'
+import { useToast } from '../ui/toastProvider'
 
 function HeatmapDayDetails({ day, dateStr }: { day: MoodHeatmapDay; dateStr: string }) {
   const emotions = day.emotions || []
@@ -175,6 +178,7 @@ function MoodSongCard({ song }: { song: MoodSong }) {
 export function ProfilePage() {
   const { username } = useParams()
   const nav = useNavigate()
+  const { showToast } = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
   const s = useSession()
   const [isNarrow, setIsNarrow] = useState(
@@ -343,7 +347,29 @@ export function ProfilePage() {
           <div className="profile-avatar profile-avatar--discord" style={{ background: gradient }}>
             {emoji}
           </div>
-          <div className="profile-username">@{u.username}</div>
+          <div className="profile-username">
+            @{u.username}
+            {typeof payload.activityStreak === 'number' && payload.activityStreak > 0 ? (
+              <span className="profile-streak">🔥 {streakLabel(payload.activityStreak, getLang())}</span>
+            ) : null}
+          </div>
+          {isOwn ? (
+            <button
+              type="button"
+              className="profile-share-btn"
+              onClick={async () => {
+                const url = shareProfileUrl(u.username)
+                try {
+                  await navigator.clipboard.writeText(url)
+                  showToast(t('profile_share_copied'), 'success')
+                } catch {
+                  showToast(url, 'info')
+                }
+              }}
+            >
+              {t('profile_share')}
+            </button>
+          ) : null}
         <div className="profile-ai-weekly profile-ai-weekly--card" aria-live="polite">
           <div className="profile-ai-weekly-label">{t('profile_weekly_ai_label')}</div>
           {weeklyLines.length ? (

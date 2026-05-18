@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch } from '../api/apiClient'
 import type { DailyAnonymousAnswer, DailyQuestionToday } from '../types'
 import { t, getLang } from '../i18n/i18n'
 import { useSession } from '../state/SessionContext'
 import { useRealtime } from '../realtime/RealtimeContext'
 import { useToast } from '../ui/toastProvider'
+import { storageKeys } from '../config/storage'
 
 function anonKey(a: DailyAnonymousAnswer, i: number) {
   return `${a.createdAt}:${i}:${a.text.slice(0, 24)}`
@@ -21,10 +22,55 @@ export function DailyQuestionFeed({ today, onTodayUpdate }: Props) {
   const { showToast } = useToast()
   const [answers, setAnswers] = useState<DailyAnonymousAnswer[]>([])
   const [loadingA, setLoadingA] = useState(false)
-  const [draft, setDraft] = useState('')
+  const [draft, setDraft] = useState(() => {
+    try {
+      return localStorage.getItem(storageKeys.dailyAnswerDraft) || ''
+    } catch {
+      return ''
+    }
+  })
   const [busy, setBusy] = useState(false)
+  const draftToastRef = useRef(false)
 
   const dayKey = today?.dayKey
+
+  useEffect(() => {
+    if (!s.isAuthed || draftToastRef.current) return
+    try {
+      const saved = localStorage.getItem(storageKeys.dailyAnswerDraft)
+      if (saved?.trim() && !today?.hasAnswered) {
+        draftToastRef.current = true
+        showToast(t('daily_draft_restored'), 'info')
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [s.isAuthed, showToast, today?.hasAnswered])
+
+  useEffect(() => {
+    if (today?.myAnswer) {
+      setDraft(today.myAnswer)
+      return
+    }
+    if (!today?.dayKey) return
+    try {
+      setDraft(localStorage.getItem(storageKeys.dailyAnswerDraft) || '')
+    } catch {
+      setDraft('')
+    }
+  }, [today?.myAnswer, today?.dayKey])
+
+  useEffect(() => {
+    if (!s.isAuthed || today?.hasAnswered) return
+    const timer = window.setTimeout(() => {
+      try {
+        localStorage.setItem(storageKeys.dailyAnswerDraft, draft)
+      } catch {
+        /* ignore */
+      }
+    }, 400)
+    return () => window.clearTimeout(timer)
+  }, [draft, s.isAuthed, today?.hasAnswered])
 
   const loadAnswers = useCallback(async () => {
     if (!dayKey) return
@@ -63,6 +109,11 @@ export function DailyQuestionFeed({ today, onTodayUpdate }: Props) {
         body: JSON.stringify({ text }),
       })
       onTodayUpdate(next)
+      try {
+        localStorage.removeItem(storageKeys.dailyAnswerDraft)
+      } catch {
+        /* ignore */
+      }
       showToast(t('daily_saved_toast'), 'success')
       void loadAnswers()
     } catch (e: unknown) {

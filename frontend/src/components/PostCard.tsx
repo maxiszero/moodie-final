@@ -3,6 +3,7 @@ import type { Post, PostComment, PostReaction } from '../types'
 import { useSession } from '../state/SessionContext'
 import { apiFetch } from '../api/apiClient'
 import { getLang, t } from '../i18n/i18n'
+import { profilePostDeepLink, sharePostUrl } from '../config/site'
 import { PostText } from './PostText'
 import { softMoodShadow } from '../ui/moodShadow'
 import { applyMoodStyleToTriple, effectiveMoodStyle } from '../ui/moodGradientStyle'
@@ -10,6 +11,9 @@ import { ONBOARDING_EMOTION_CARDS } from '../config/emotionPalette'
 import { setGettingStartedTaskDone } from '../ui/gettingStarted'
 import { PostComments } from './PostComments'
 import { showToast } from '../ui/toast'
+import { MoodSongPreview, moodSongFromPost } from './MoodSongPreview'
+
+const POST_EDIT_WINDOW_MS = 15 * 60 * 1000
 
 function firstEmoji(s?: string) {
   if (!s) return '😐'
@@ -98,10 +102,53 @@ export function PostCard({
   const [supportOpen, setSupportOpen] = useState(false)
   const [supportLock, setSupportLock] = useState(false)
   const [supportUntil, setSupportUntil] = useState(0)
+  const [editing, setEditing] = useState(false)
+  const [editText, setEditText] = useState(post.text)
+  const [editBusy, setEditBusy] = useState(false)
+
+  const postSong = useMemo(() => moodSongFromPost(post), [post])
 
   const SUPPORT_COOLDOWN_MS = 15_000
 
   const isOwn = Boolean(s.userId && (author?._id ? String(author._id) === String(s.userId) : false))
+
+  const canEdit = useMemo(() => {
+    if (!isOwn) return false
+    const age = Date.now() - new Date(post.createdAt).getTime()
+    return age <= POST_EDIT_WINDOW_MS
+  }, [isOwn, post.createdAt])
+
+  const sharePost = async () => {
+    setMenuOpen(false)
+    const url = sharePostUrl(post._id)
+    const deep = profilePostDeepLink(authorName, post._id)
+    try {
+      await navigator.clipboard.writeText(url)
+      showToast(t('post_share_copied'), 'info')
+    } catch {
+      showToast(deep, 'info')
+    }
+  }
+
+  const saveEdit = async () => {
+    const trimmed = editText.trim()
+    if (!trimmed || trimmed.length > 228) return
+    setEditBusy(true)
+    try {
+      const updated = await apiFetch<Post>(`/posts/${post._id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ text: trimmed }),
+      })
+      onPostUpdated(updated)
+      setEditing(false)
+      showToast(t('post_edit_saved'), 'info')
+    } catch (e: unknown) {
+      const msg = e && typeof e === 'object' && 'message' in e ? String((e as { message: string }).message) : t('settings_save_error')
+      showToast(msg, 'error')
+    } finally {
+      setEditBusy(false)
+    }
+  }
 
   let animClass = ''
   if (['happy', 'excited', 'loved', 'inspiration', 'drive', 'funny'].includes(postMood.emotion)) animClass = 'anim-happy'
@@ -185,6 +232,17 @@ export function PostCard({
             </svg>
           </button>
           <div className={`post-menu-dropdown ${menuOpen ? '' : 'hidden'}`} id={`post-menu-dropdown-${post._id}`}>
+            <button
+              type="button"
+              className="post-menu-item"
+              onClick={() => void sharePost()}
+            >
+              <span>🔗</span>
+              <div>
+                <span>{t('post_share')}</span>
+                <small className="post-menu-item-desc">{t('post_share_desc')}</small>
+              </div>
+            </button>
             {!isOwn ? (
               <>
                 <button
@@ -232,6 +290,23 @@ export function PostCard({
                 <small className="post-menu-item-desc">{t('ai_reasoning_desc')}</small>
               </div>
             </button>
+            {isOwn && canEdit ? (
+              <button
+                type="button"
+                className="post-menu-item"
+                onClick={() => {
+                  setMenuOpen(false)
+                  setEditText(post.text)
+                  setEditing(true)
+                }}
+              >
+                <span>✏️</span>
+                <div>
+                  <span>{t('post_edit')}</span>
+                  <small className="post-menu-item-desc">{t('post_edit_desc')}</small>
+                </div>
+              </button>
+            ) : null}
             {isOwn ? (
               <button
                 type="button"
@@ -300,8 +375,38 @@ export function PostCard({
         </div>
 
         <div className="post-content" style={{ marginTop: 16, fontSize: '1.1rem', fontWeight: 500 }}>
-          <PostText text={post.text} />
+          {editing ? (
+            <div className="post-edit-box">
+              <textarea
+                className="post-edit-box__input"
+                value={editText}
+                maxLength={228}
+                rows={4}
+                onChange={(e) => setEditText(e.target.value)}
+              />
+              <div className="post-edit-box__actions">
+                <button type="button" className="auth-btn" disabled={editBusy || !editText.trim()} onClick={() => void saveEdit()}>
+                  {editBusy ? t('post_edit_saving') : t('post_edit_save')}
+                </button>
+                <button
+                  type="button"
+                  className="auth-btn auth-btn--ghost"
+                  disabled={editBusy}
+                  onClick={() => {
+                    setEditing(false)
+                    setEditText(post.text)
+                  }}
+                >
+                  {t('post_edit_cancel')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <PostText text={post.text} />
+          )}
         </div>
+
+        {postSong && !editing ? <MoodSongPreview song={postSong} compact /> : null}
 
         <div id={`ai-reasoning-${post._id}`} className={`ai-reasoning-box ${showReasoning ? '' : 'hidden'}`} style={{ background: 'var(--bg-color)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}>
           <strong>{t('ai_analysis')}:</strong> {post.reasoning || '—'}

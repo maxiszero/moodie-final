@@ -1,6 +1,8 @@
 // @ts-nocheck
 const express = require('express');
+const multer = require('multer');
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 64 * 1024 } });
 const { protect } = require('../middleware/auth');
 const { optionalAuth } = require('../middleware/optionalAuth');
 const {
@@ -15,11 +17,21 @@ const {
   getTelegramSettings,
   updateTelegramSettings,
   blockUser,
-  getMoodHeatmap
+  getMoodHeatmap,
+  getActivityStreak,
+  exportSettingsCsv,
+  importSettingsCsv,
+  getBlockedUsers,
+  unblockUser,
 } = require('../controllers/userController');
 
 router.patch('/me/password', protect, updatePassword);
 router.patch('/me/settings', protect, updateSettings);
+router.get('/me/streak', protect, getActivityStreak);
+router.get('/me/settings/export', protect, exportSettingsCsv);
+router.post('/me/settings/import', protect, upload.single('file'), importSettingsCsv);
+router.get('/me/blocked', protect, getBlockedUsers);
+router.delete('/me/blocked/:username', protect, unblockUser);
 router.get('/me/telegram-settings', protect, getTelegramSettings);
 router.patch('/me/telegram-settings', protect, updateTelegramSettings);
 router.get('/search', optionalAuth, searchUsers);

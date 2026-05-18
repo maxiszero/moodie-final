@@ -1,6 +1,16 @@
+import re
 from datetime import datetime, timezone
+from typing import Any
 
+from fastapi import HTTPException
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo.errors import DuplicateKeyError
+
+from ..mongo import stringify_mongo
+from ..realtime import emit_daily_answer
 from .palette import normalize_emotion
+
+LINK_RE = re.compile(r"(https?://\S+|www\.\S+)", re.I)
 
 MoodBucket = str
 
@@ -136,3 +146,50 @@ def resolve_lang(user: dict | None, query_lang: str | None) -> str:
     if user and user.get("preferredLanguage") in {"ru", "en"}:
         return user["preferredLanguage"]
     return "ru"
+
+
+async def submit_daily_answer(
+    db: AsyncIOMotorDatabase,
+    user: dict[str, Any],
+    text: str,
+    *,
+    lang: str | None = None,
+) -> dict[str, Any]:
+    raw = text.strip() if isinstance(text, str) else ""
+    if not raw:
+        raise HTTPException(status_code=400, detail={"message": "Text is required"})
+    if len(raw) > 600:
+        raise HTTPException(status_code=400, detail={"message": "Answer is too long (max 600 characters)"})
+    if LINK_RE.search(raw):
+        raise HTTPException(status_code=400, detail={"message": "Links are not allowed for security reasons"})
+
+    day_key = utc_day_key()
+    existing = await db.dailyanswers.find_one({"userId": user["_id"], "dayKey": day_key})
+    now = datetime.now(timezone.utc)
+    resolved_lang = resolve_lang(user, lang)
+
+    if existing:
+        await db.dailyanswers.update_one(
+            {"_id": existing["_id"]},
+            {"$set": {"text": raw, "updatedAt": now}},
+        )
+        return {"updated": True, "dayKey": day_key, "text": raw}
+
+    mood_bucket = get_mood_bucket(user.get("currentEmotion"))
+    question_text = pick_question(day_key, mood_bucket, resolved_lang)
+    doc = {
+        "userId": user["_id"],
+        "dayKey": day_key,
+        "moodBucket": mood_bucket,
+        "questionText": question_text,
+        "lang": resolved_lang,
+        "text": raw,
+        "createdAt": now,
+        "updatedAt": now,
+    }
+    try:
+        await db.dailyanswers.insert_one(doc)
+    except DuplicateKeyError:
+        raise HTTPException(status_code=409, detail={"message": "Already answered for this day"}) from None
+    await emit_daily_answer({"dayKey": day_key, "createdAt": stringify_mongo(now)})
+    return {"updated": False, "dayKey": day_key, "text": raw}

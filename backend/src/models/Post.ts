@@ -108,6 +108,12 @@ const postSchema = new mongoose.Schema({
     default: 0,
     min: 0,
   },
+  moodSongTitle: { type: String, default: '' },
+  moodSongArtist: { type: String, default: '' },
+  moodSongPreviewUrl: { type: String, default: '' },
+  moodSongExternalUrl: { type: String, default: '' },
+  moodSongArtworkUrl: { type: String, default: '' },
+  moodSongSource: { type: String, default: '' },
 }, {
   timestamps: true // Automatically creates createdAt and updatedAt fields
 });

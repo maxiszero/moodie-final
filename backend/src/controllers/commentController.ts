@@ -80,14 +80,16 @@ const addComment = async (req, res, next) => {
     const populated = await Comment.findById(comment._id).populate('userId', publicAuthorFields).lean();
     if (post.userId.toString() !== req.user._id.toString()) {
       const owner = await User.findById(post.userId).select(
-        'telegramDailyNotify telegramActivityNotify telegramChatId telegramUserId preferredLanguage banned lastTelegramActivityNotifyAt telegramTimezoneOffsetMinutes telegramQuietHoursEnabled telegramQuietStartHour telegramQuietEndHour',
+        'username telegramDailyNotify telegramActivityNotify telegramChatId telegramUserId preferredLanguage banned lastTelegramActivityNotifyAt telegramTimezoneOffsetMinutes telegramQuietHoursEnabled telegramQuietStartHour telegramQuietEndHour',
       );
       if (owner && !owner.banned) {
         const text = owner.preferredLanguage === 'en'
           ? `💬 ${req.user.username} commented on your post on Moodie.`
           : `💬 ${req.user.username} прокомментировал ваш пост в Moodie.`;
         notifyTelegramUser(owner, text, 'comment');
-        notifyInAppUser(req.io, owner._id, text, 'comment');
+        notifyInAppUser(req.io, owner._id, text, 'comment', {
+          href: `#/profile/${encodeURIComponent(owner.username)}?post=${post._id}`,
+        });
       }
     }
     res.status(201).json(populated);

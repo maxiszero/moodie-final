@@ -33,6 +33,15 @@ export const storageKeys = {
   telegramLinked: 'moodie_telegram_linked',
   /** Recent search queries (JSON string[]) */
   searchHistory: 'moodie_search_history',
+  /** Composer draft on feed */
+  postDraft: 'moodie_post_draft',
+  dailyAnswerDraft: 'moodie_daily_answer_draft',
+  /** In-app notification history (JSON) */
+  notificationHistory: 'moodie_notification_history',
+  /** Browser notifications for activity (follow, comment, reaction) */
+  activityNotifyEnabled: 'moodie_activity_notify_enabled',
+  /** Telegram Mini App onboarding seen */
+  hasSeenTelegramOnboarding: 'moodie_tg_onboarding_seen',
 } as const
 
 export type Theme = 'light' | 'dark'

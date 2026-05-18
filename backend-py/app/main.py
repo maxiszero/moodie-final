@@ -14,7 +14,7 @@ from .config import settings
 from .db import close_client
 from .indexes import ensure_indexes
 from .realtime import sio
-from .routers import admin, auth, daily_question, mood_song, posts, users
+from .routers import admin, auth, daily_question, mood_neighbors, mood_song, posts, share, users
 from .services.daily_question import utc_day_key
 from .services.telegram_bot import start_telegram_background_tasks
 
@@ -81,7 +81,9 @@ def create_app() -> FastAPI:
     app.include_router(users.router, prefix="/api")
     app.include_router(daily_question.router, prefix="/api")
     app.include_router(mood_song.router, prefix="/api")
+    app.include_router(mood_neighbors.router, prefix="/api")
     app.include_router(admin.router, prefix="/api")
+    app.include_router(share.router)
     return app
 
 
