@@ -9,3 +9,4 @@ PyJWT
 bcrypt
 pytest
 pytest-asyncio
+python-multipart

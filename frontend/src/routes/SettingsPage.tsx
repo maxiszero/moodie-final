@@ -390,6 +390,40 @@ export function SettingsPage() {
         </label>
       </div>
       <div className="settings-card">
+        <h3 id="settingsMoodGradientTitle">{t('settings_mood_gradient_title')}</h3>
+        <p className="settings-hint">{t('settings_mood_gradient_hint')}</p>
+        <label className="settings-option">
+          <input
+            type="radio"
+            name="moodGradient"
+            value="auto"
+            checked={s.moodGradientMode === 'auto'}
+            onChange={() => s.setMoodGradientMode('auto')}
+          />
+          <span>{t('settings_mood_gradient_auto')}</span>
+        </label>
+        <label className="settings-option">
+          <input
+            type="radio"
+            name="moodGradient"
+            value="vivid"
+            checked={s.moodGradientMode === 'vivid'}
+            onChange={() => s.setMoodGradientMode('vivid')}
+          />
+          <span>{t('settings_mood_gradient_vivid')}</span>
+        </label>
+        <label className="settings-option">
+          <input
+            type="radio"
+            name="moodGradient"
+            value="pastel"
+            checked={s.moodGradientMode === 'pastel'}
+            onChange={() => s.setMoodGradientMode('pastel')}
+          />
+          <span>{t('settings_mood_gradient_pastel')}</span>
+        </label>
+      </div>
+      <div className="settings-card">
         <button
           type="button"
           id="settingsLogoutBtn"

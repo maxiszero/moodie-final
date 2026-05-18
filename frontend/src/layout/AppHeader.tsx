@@ -1,8 +1,10 @@
+import { useMemo } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { LOGO_FALLBACK, LOGO_LIGHT } from '../config/logo'
 import { t } from '../i18n/i18n'
 import { useRealtime } from '../realtime/RealtimeContext'
 import { useSession } from '../state/SessionContext'
+import { moodLinearGradient135 } from '../ui/moodGradientStyle'
 import { HeaderSearch } from './HeaderSearch'
 
 const homeIcon = (
@@ -28,7 +30,10 @@ export function AppHeader() {
   const onlineText =
     rt.onlineCount === null ? t('online_unknown') : t('online_count').replace('{n}', String(rt.onlineCount))
 
-  const avatarGradient = `linear-gradient(135deg, ${s.mood.color}, ${s.mood.color2}, ${s.mood.color3}, ${s.mood.color2}, ${s.mood.color})`
+  const avatarGradient = useMemo(
+    () => moodLinearGradient135(s.mood.color, s.mood.color2, s.mood.color3, s.moodGradientMode, s.theme),
+    [s.mood.color, s.mood.color2, s.mood.color3, s.moodGradientMode, s.theme],
+  )
 
   return (
     <header id="appHeader">

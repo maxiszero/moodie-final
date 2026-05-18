@@ -44,11 +44,19 @@ await callTelegram('setMyCommands', {
     },
     {
       command: 'help',
-      description: 'Commands: app, today, song, notify',
+      description: 'Commands: post, app, today, song, notify',
     },
     {
       command: 'app',
       description: `Open ${shortName} mini app`,
+    },
+    {
+      command: 'post',
+      description: 'Next message publishes as a Moodie post',
+    },
+    {
+      command: 'cancel',
+      description: 'Cancel pending /post',
     },
     {
       command: 'today',

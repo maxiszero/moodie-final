@@ -4,10 +4,10 @@
             --text-primary: #111827;
             --text-secondary: #6b7280;
             --border-color: #f3f4f6;
-            /* Основные кнопки — нейтральные; фиолет только при наведении */
+            /* Основные кнопки — нейтральные; при hover/active чуть светлее без фиолета */
             --primary-btn: #111827;
-            --primary-btn-hover: #6366f1;
-            --primary-btn-active: #4f46e5;
+            --primary-btn-hover: #374151;
+            --primary-btn-active: #4b5563;
             --primary-btn-rgb: 17, 24, 39;
             --accent: #6366f1;
             --accent-rgb: 99, 102, 241;
@@ -18,9 +18,9 @@
             --emotion-happy: #FFB703;
             --emotion-sad: #3B82F6;
             --emotion-angry: #DC2626;
-            --emotion-neutral: #9E9E9E;
+            --emotion-neutral: #818cf8;
             --emotion-excited: #FACC15;
-            --emotion-tired: #78716C;
+            --emotion-tired: #4f46e5;
             --emotion-scared: #7C3AED;
             --emotion-loved: #DB2777;
             --emotion-inspiration: #A855F7;
@@ -28,7 +28,7 @@
             --emotion-drive: #FB923C;
             --emotion-melancholy: #818CF8;
             --emotion-calmness: #14B8A6;
-            --emotion-apathy: #94A3B8;
+            --emotion-apathy: #9333EA;
             
             --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
             --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
@@ -44,8 +44,8 @@
             --text-secondary: #9ca3af;
             --border-color: #2d3748;
             --primary-btn: #4b5563;
-            --primary-btn-hover: #818cf8;
-            --primary-btn-active: #6366f1;
+            --primary-btn-hover: #6b7280;
+            --primary-btn-active: #9ca3af;
             --primary-btn-rgb: 75, 85, 99;
             --accent: #818cf8;
             --accent-rgb: 129, 140, 248;
@@ -975,10 +975,8 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            background:
-                linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(236, 72, 153, 0.12)),
-                var(--card-bg);
-            border: 1px solid rgba(99, 102, 241, 0.38);
+            background: #fcfcfc;
+            border: 1px solid #787878;
             color: var(--text-primary);
             padding: 10px 18px;
             min-height: 44px;
@@ -988,7 +986,7 @@
             font-weight: 800;
             cursor: pointer;
             touch-action: manipulation;
-            box-shadow: 0 10px 28px rgba(99, 102, 241, 0.12);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
             transition:
                 color 0.2s,
                 background 0.2s,
@@ -998,13 +996,24 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        [data-theme='dark'] .post-comments__action-btn {
+            background: #0f1419;
+            border: none;
+            box-shadow: none;
+        }
+
         .post-comments__action-btn:hover,
         .post-comments__action-btn:focus-visible {
-            background:
-                linear-gradient(135deg, rgba(99, 102, 241, 0.24), rgba(236, 72, 153, 0.18)),
-                var(--card-bg);
-            border-color: rgba(99, 102, 241, 0.65);
-            box-shadow: 0 14px 34px rgba(99, 102, 241, 0.18);
+            background: #f3f3f3;
+            border-color: #606060;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        [data-theme='dark'] .post-comments__action-btn:hover,
+        [data-theme='dark'] .post-comments__action-btn:focus-visible {
+            background: #151c24;
+            border: none;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
         }
 
         .post-comments__action-btn:active {
@@ -3913,7 +3922,7 @@
             margin-bottom: 16px;
             padding: 14px 16px;
             border-radius: var(--radius-lg);
-            border: 1px solid rgba(99, 102, 241, 0.35);
+            border: none;
             background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(236, 72, 153, 0.08));
             display: flex;
             flex-wrap: wrap;
@@ -4140,7 +4149,7 @@
         .back-row button {
             background: none !important;
             color: var(--text-secondary);
-            padding: 0;
+            padding: 0 16px;
             border-radius: 0;
             font-weight: 500;
         }
@@ -5059,6 +5068,23 @@
 
             .feed-online-badge {
                 margin-bottom: 12px;
+            }
+
+            /* Profile hero: edge-to-edge on small screens (main has horizontal padding). */
+            .profile-hero {
+                margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+                margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+                width: calc(
+                    100% + max(16px, env(safe-area-inset-left, 0px)) + max(16px, env(safe-area-inset-right, 0px))
+                );
+                max-width: none;
+                border-radius: 0;
+                border-left: none;
+                border-right: none;
+            }
+
+            #profileView .profile-banner {
+                border-radius: 0;
             }
 
             .create-post {

@@ -59,9 +59,9 @@ def auth_payload(user: dict[str, Any], token: str | None = None) -> dict[str, An
         "username": user.get("username", ""),
         "currentEmotion": user.get("currentEmotion") or "neutral",
         "currentEmoji": user.get("currentEmoji") or "😐",
-        "currentColor": user.get("currentColor") or "#9E9E9E",
-        "currentColor2": user.get("currentColor2") or "#757575",
-        "currentColor3": user.get("currentColor3") or "#616161",
+        "currentColor": user.get("currentColor") or "#E0E7FF",
+        "currentColor2": user.get("currentColor2") or "#A5B4FC",
+        "currentColor3": user.get("currentColor3") or "#6366F1",
         "preferredLanguage": user.get("preferredLanguage") or "ru",
         "preferredTheme": user.get("preferredTheme") or "light",
         "role": user.get("role") or "user",
@@ -99,9 +99,9 @@ async def register_user(
     allow_first_admin = str(__import__("os").getenv("ALLOW_FIRST_ADMIN", "")).lower() == "true"
     palette = palette_for_emotion(payload.onboardingMood or "neutral") or {
         "emotion": "neutral",
-        "color": "#9E9E9E",
-        "color2": "#757575",
-        "color3": "#616161",
+        "color": "#E0E7FF",
+        "color2": "#A5B4FC",
+        "color3": "#6366F1",
     }
     now = datetime.now(timezone.utc)
     doc = {

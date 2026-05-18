@@ -10,13 +10,15 @@ import {
 import { apiFetch } from '../api/apiClient'
 import { ONBOARDING_EMOTION_CARDS } from '../config/emotionPalette'
 import { t } from '../i18n/i18n'
-import type { Post, PublicUser } from '../types'
+import { useSession } from '../state/SessionContext'
+import type { MoodGradientMode, Post, PublicUser, Theme } from '../types'
+import { moodLinearGradient135 } from '../ui/moodGradientStyle'
 
-function userGradient(u: PublicUser) {
-  const c1 = u.currentColor || '#9E9E9E'
+function userGradient(u: PublicUser, moodGradientMode: MoodGradientMode, theme: Theme) {
+  const c1 = u.currentColor || '#E0E7FF'
   const c2 = u.currentColor2 || c1
   const c3 = u.currentColor3 || c2
-  return `linear-gradient(135deg, ${c1}, ${c2}, ${c3}, ${c2}, ${c1})`
+  return moodLinearGradient135(c1, c2, c3, moodGradientMode, theme)
 }
 
 const searchIcon = (
@@ -59,6 +61,7 @@ export const HeaderSearch = forwardRef<HeaderSearchRef, HeaderSearchProps>(funct
   const [userResults, setUserResults] = useState<PublicUser[]>([])
   const [postResults, setPostResults] = useState<Post[]>([])
   const [err, setErr] = useState('')
+  const sess = useSession()
 
   const runSearch = useCallback(
     async (term: string) => {
@@ -211,7 +214,7 @@ export const HeaderSearch = forwardRef<HeaderSearchRef, HeaderSearchProps>(funct
                             <div
                               className="user-circle user-circle--sm"
                               style={{
-                                background: userGradient(u),
+                                background: userGradient(u, sess.moodGradientMode, sess.theme),
                                 boxShadow: glow ? `0 0 0 1px ${glow}33` : undefined,
                               }}
                             >

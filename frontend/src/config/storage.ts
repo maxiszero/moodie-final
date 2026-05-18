@@ -1,3 +1,5 @@
+import type { MoodGradientMode } from '../types'
+
 export const storageKeys = {
   token: 'moodie_token',
   username: 'moodie_user',
@@ -5,6 +7,8 @@ export const storageKeys = {
   role: 'moodie_role',
   lang: 'moodie_lang',
   theme: 'moodie_theme',
+  /** vivid | pastel | auto — см. MoodGradientMode */
+  moodGradientMode: 'moodie_mood_gradient_mode',
   currentEmotion: 'moodie_currentEmotion',
   currentEmoji: 'moodie_currentEmoji',
   currentColor: 'moodie_currentColor',
@@ -33,6 +37,24 @@ export const storageKeys = {
 
 export type Theme = 'light' | 'dark'
 export type Lang = 'ru' | 'en'
+
+export function getStoredMoodGradientMode(): MoodGradientMode {
+  try {
+    const v = localStorage.getItem(storageKeys.moodGradientMode)
+    if (v === 'vivid' || v === 'pastel' || v === 'auto') return v
+  } catch {
+    /* ignore */
+  }
+  return 'auto'
+}
+
+export function setStoredMoodGradientMode(mode: MoodGradientMode) {
+  try {
+    localStorage.setItem(storageKeys.moodGradientMode, mode)
+  } catch {
+    /* ignore */
+  }
+}
 
 export function getStoredTheme(): Theme {
   const v = localStorage.getItem(storageKeys.theme)

@@ -2,10 +2,20 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { apiFetch } from '../api/apiClient'
 import { useSession } from '../state/SessionContext'
-import type { AchievementBadge, DailyQuestionHistoryItem, MoodHeatmapDay, MoodSong, ProfilePayload, PublicUser } from '../types'
+import type {
+  AchievementBadge,
+  DailyQuestionHistoryItem,
+  MoodGradientMode,
+  MoodHeatmapDay,
+  MoodSong,
+  ProfilePayload,
+  PublicUser,
+  Theme,
+} from '../types'
 import { PostCard } from '../components/PostCard'
 import { t, getLang } from '../i18n/i18n'
 import { setGettingStartedTaskDone } from '../ui/gettingStarted'
+import { moodBannerLinearGradient, moodLinearGradient135 } from '../ui/moodGradientStyle'
 
 function HeatmapDayDetails({ day, dateStr }: { day: MoodHeatmapDay; dateStr: string }) {
   const emotions = day.emotions || []
@@ -60,17 +70,17 @@ function HeatmapDayDetails({ day, dateStr }: { day: MoodHeatmapDay; dateStr: str
   )
 }
 
-function userListRows(users: PublicUser[]) {
+function userListRows(users: PublicUser[], moodGradientMode: MoodGradientMode, theme: Theme) {
   if (!users || users.length === 0) {
     return <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>—</p>
   }
   return (
     <>
       {users.map((u) => {
-        const c1 = u.currentColor || '#9E9E9E'
-        const c2 = u.currentColor2 || c1 || '#757575'
-        const c3 = u.currentColor3 || c2 || '#616161'
-        const gradient = `linear-gradient(135deg, ${c1}, ${c2}, ${c3}, ${c2}, ${c1})`
+        const c1 = u.currentColor || '#E0E7FF'
+        const c2 = u.currentColor2 || c1 || '#A5B4FC'
+        const c3 = u.currentColor3 || c2 || '#6366F1'
+        const gradient = moodLinearGradient135(c1, c2, c3, moodGradientMode, theme)
         const emoji = u.currentEmoji || '😐'
         return (
           <a key={u._id} className="user-list-row" href={`#/profile/${encodeURIComponent(u.username)}`}>
@@ -309,11 +319,11 @@ export function ProfilePage() {
   const hero = useMemo(() => {
     if (!payload) return null
     const u = payload.user
-    const c1 = u.currentColor || '#9E9E9E'
-    const c2 = u.currentColor2 || c1 || '#757575'
-    const c3 = u.currentColor3 || c2 || '#616161'
-    const gradient = `linear-gradient(135deg, ${c1}, ${c2}, ${c3}, ${c2}, ${c1})`
-    const bannerGradient = `linear-gradient(110deg, ${c1} 0%, ${c2} 40%, ${c3} 72%, ${c1} 100%)`
+    const c1 = u.currentColor || '#E0E7FF'
+    const c2 = u.currentColor2 || c1 || '#A5B4FC'
+    const c3 = u.currentColor3 || c2 || '#6366F1'
+    const gradient = moodLinearGradient135(c1, c2, c3, s.moodGradientMode, s.theme)
+    const bannerGradient = moodBannerLinearGradient(c1, c2, c3, s.moodGradientMode, s.theme)
     const emoji = u.currentEmoji || '😐'
     const emotion = u.currentEmotion || 'neutral'
     const isOwn = s.username === u.username
@@ -416,7 +426,7 @@ export function ProfilePage() {
         </div>
       </div>
     )
-  }, [payload, s.isAuthed, s.username, openFollowersModal, openFollowingModal])
+  }, [payload, s.isAuthed, s.username, s.moodGradientMode, s.theme, openFollowersModal, openFollowingModal])
 
   return (
     <div id="profileView">
@@ -582,7 +592,7 @@ export function ProfilePage() {
               </button>
             </div>
             <div className="profile-follow-modal__body" role="tabpanel">
-              {userListRows(userListTab === 'followers' ? followers : following)}
+              {userListRows(userListTab === 'followers' ? followers : following, s.moodGradientMode, s.theme)}
             </div>
           </div>
         </div>

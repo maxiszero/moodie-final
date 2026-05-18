@@ -62,9 +62,9 @@ function coercePythonAnalysis(data, text) {
     emotion: String(data.emotion || 'neutral').toLowerCase(),
     emoji: typeof data.emoji === 'string' && data.emoji ? data.emoji : '😐',
     intensity: typeof data.intensity === 'number' ? data.intensity : 50,
-    color: typeof data.color === 'string' && data.color ? data.color : '#9E9E9E',
-    color2: typeof data.color2 === 'string' && data.color2 ? data.color2 : data.color || '#757575',
-    color3: typeof data.color3 === 'string' && data.color3 ? data.color3 : data.color2 || data.color || '#616161',
+    color: typeof data.color === 'string' && data.color ? data.color : '#E0E7FF',
+    color2: typeof data.color2 === 'string' && data.color2 ? data.color2 : data.color || '#A5B4FC',
+    color3: typeof data.color3 === 'string' && data.color3 ? data.color3 : data.color2 || data.color || '#6366F1',
     reasoning: typeof data.reasoning === 'string' ? data.reasoning : '',
     tip: typeof data.tip === 'string' ? data.tip : '',
     feedQuality: clampFeedQuality(data.feedQuality) ?? estimateFeedQuality(text),
@@ -332,9 +332,9 @@ TEXT TO ANALYZE:
                     emotion: fixed.emotion.toLowerCase(),
                     emoji: emo,
                     intensity: fixed.intensity || 50,
-                    color: fixed.color1 || '#9E9E9E',
-                    color2: fixed.color2 || fixed.color1 || '#757575',
-                    color3: fixed.color3 || fixed.color2 || '#616161',
+                    color: fixed.color1 || '#E0E7FF',
+                    color2: fixed.color2 || fixed.color1 || '#A5B4FC',
+                    color3: fixed.color3 || fixed.color2 || '#6366F1',
                     reasoning: fixed.reasoning || "",
                     tip: fixed.tip || "",
                     feedQuality: fq,
@@ -367,9 +367,9 @@ TEXT TO ANALYZE:
     emotion: 'neutral', 
     emoji: '😐', 
     intensity: 30,
-    color: '#9E9E9E', 
-    color2: '#757575', 
-    color3: '#616161',
+    color: '#E0E7FF', 
+    color2: '#A5B4FC', 
+    color3: '#6366F1',
     reasoning: 'Текст кажется нейтральным по смыслу.',
     tip: 'Просто хороший день, чтобы ничего не делать ☁️',
     feedQuality: estimateFeedQuality(text),
@@ -379,7 +379,7 @@ TEXT TO ANALYZE:
 
   // Basic Keyword Fallback
   if (lowerText.match(/апати|всё равно|ничего не чувств|numb|apat/)) 
-    result = { emotion: 'apathy', emoji: '😶', intensity: 40, color: '#CBD5E1', color2: '#94A3B8', color3: '#64748B', reasoning: 'Чувство безразличия.', tip: 'Иногда ничего не чувствовать — это тоже нормально 😶' };
+    result = { emotion: 'apathy', emoji: '😶', intensity: 40, color: '#EDE9FE', color2: '#C4B5FD', color3: '#6D28D9', reasoning: 'Чувство безразличия.', tip: 'Иногда ничего не чувствовать — это тоже нормально 😶' };
   else if (lowerText.match(/спокой|умиротвор|гармон|zen|calm|peaceful/)) 
     result = { emotion: 'calm', emoji: '😌', intensity: 20, color: '#99F6E4', color2: '#5EEAD4', color3: '#2DD4BF', reasoning: 'Спокойствие и дзен.', tip: 'Вдох-выдох... Поймай этот момент 😌' };
   else if (lowerText.match(/меланхол|ностальг|тосклив|wistful|melanchol/)) 
@@ -391,7 +391,7 @@ TEXT TO ANALYZE:
   else if (lowerText.match(/вдохнов|идеи|творч|muse|inspir/)) 
     result = { emotion: 'inspired', emoji: '✨', intensity: 80, color: '#E9D5FF', color2: '#D8B4FE', color3: '#C084FC', reasoning: 'Творческий подъем.', tip: 'Твори и вдохновляй! ✨' };
   else if (lowerText.match(/устал|tired|sleep|спать/)) 
-    result = { emotion: 'tired', emoji: '😫', intensity: 60, color: '#E7E5E4', color2: '#D6D3D1', color3: '#A8A29E', reasoning: 'Нужен отдых.', tip: 'Пора отдохнуть и набраться сил 🔋' };
+    result = { emotion: 'tired', emoji: '😫', intensity: 60, color: '#A5B4FC', color2: '#4F46E5', color3: '#312E81', reasoning: 'Нужен отдых.', tip: 'Пора отдохнуть и набраться сил 🔋' };
   else if (lowerText.match(/страш|panic|terror|ужас|боюсь/) && !lowerText.match(/тревож/)) 
     result = { emotion: 'scared', emoji: '😨', intensity: 85, color: '#DDD6FE', color2: '#C4B5FD', color3: '#A78BFA', reasoning: 'Чувство страха.', tip: 'Ты сильнее, чем кажешься 🛡️' };
   else if (lowerText.match(/любл|love|обожаю/)) 

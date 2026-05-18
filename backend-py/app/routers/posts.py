@@ -180,16 +180,11 @@ async def get_mood_stats(db: AsyncIOMotorDatabase = Depends(db_dependency)) -> l
     return stringify_mongo(await db.posts.aggregate(pipeline).to_list(5))
 
 
-@router.post("", status_code=201)
-@router.post("/", status_code=201)
-async def create_post(
-    body: dict[str, Any],
-    db: AsyncIOMotorDatabase = Depends(db_dependency),
-    user: dict[str, Any] = Depends(current_user),
-) -> dict[str, Any]:
-    text = body.get("text") if isinstance(body, dict) else None
-    if not isinstance(text, str) or not text:
+async def create_post_from_text(db: AsyncIOMotorDatabase, user: dict[str, Any], text: str) -> dict[str, Any]:
+    """Shared create-post logic (HTTP API and Telegram bot)."""
+    if not isinstance(text, str) or not text.strip():
         raise HTTPException(status_code=400, detail={"message": "Please provide text for the post"})
+    text = text.strip()
     if len(text) > 228:
         raise HTTPException(status_code=400, detail={"message": "Post text cannot exceed 228 characters"})
     if LINK_RE.search(text):
@@ -211,9 +206,9 @@ async def create_post(
         "emotion": analysis.get("emotion") or "neutral",
         "emoji": analysis.get("emoji") or "😐",
         "intensity": analysis.get("intensity") or 50,
-        "color": analysis.get("color") or "#9E9E9E",
-        "color2": analysis.get("color2") or "#757575",
-        "color3": analysis.get("color3") or "#616161",
+        "color": analysis.get("color") or "#E0E7FF",
+        "color2": analysis.get("color2") or "#A5B4FC",
+        "color3": analysis.get("color3") or "#6366F1",
         "reasoning": analysis.get("reasoning") or "",
         "tip": analysis.get("tip") or "",
         "reactions": [],
@@ -252,6 +247,19 @@ async def create_post(
     populated[0]["isFollowingAuthor"] = False
     await emit_new_post(populated[0])
     return populated[0]
+
+
+@router.post("", status_code=201)
+@router.post("/", status_code=201)
+async def create_post(
+    body: dict[str, Any],
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+    user: dict[str, Any] = Depends(current_user),
+) -> dict[str, Any]:
+    text = body.get("text") if isinstance(body, dict) else None
+    if not isinstance(text, str) or not text:
+        raise HTTPException(status_code=400, detail={"message": "Please provide text for the post"})
+    return await create_post_from_text(db, user, text)
 
 
 @router.post("/ai/tip")

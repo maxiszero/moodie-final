@@ -23,15 +23,15 @@ const userSchema = new mongoose.Schema({
   },
   currentColor: {
     type: String,
-    default: '#9E9E9E'
+    default: '#E0E7FF'
   },
   currentColor2: {
     type: String,
-    default: '#757575'
+    default: '#A5B4FC'
   },
   currentColor3: {
     type: String,
-    default: '#616161'
+    default: '#6366F1'
   },
   weeklyAiSummary: {
     type: String,

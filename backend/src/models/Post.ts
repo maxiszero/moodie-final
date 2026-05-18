@@ -29,15 +29,15 @@ const postSchema = new mongoose.Schema({
   },
   color: {
     type: String,
-    default: '#9E9E9E'
+    default: '#E0E7FF'
   },
   color2: {
     type: String,
-    default: '#757575'
+    default: '#A5B4FC'
   },
   color3: {
     type: String,
-    default: '#616161'
+    default: '#6366F1'
   },
   reasoning: {
     type: String,

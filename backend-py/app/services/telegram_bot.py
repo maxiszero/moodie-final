@@ -8,8 +8,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
+from fastapi import HTTPException
 
 from ..config import settings
+from ..routers.posts import create_post_from_text
 from ..db import get_database
 from .daily_question import get_mood_bucket, pick_question, utc_day_key
 
@@ -298,14 +300,6 @@ class TelegramBotRunner:
         if chat_id is None or tg_uid is None:
             return
 
-        text_raw = message.get("text")
-        if not isinstance(text_raw, str):
-            return
-
-        cmd, arg = _parse_command(text_raw)
-        if not cmd:
-            return
-
         db = get_database()
         user = await db.users.find_one({"telegramUserId": int(tg_uid)})
         lang = _user_lang(user, from_user)
@@ -318,6 +312,53 @@ class TelegramBotRunner:
                 msg,
                 reply_markup=markup if with_app and markup else None,
             )
+
+        text_raw = message.get("text")
+        if not isinstance(text_raw, str):
+            if user and user.get("telegramAwaitingPost"):
+                if lang == "en":
+                    await reply("Please send text for your post (not a photo or sticker).")
+                else:
+                    await reply("Пришлите текст поста (не фото и не стикер).")
+            return
+
+        cmd, arg = _parse_command(text_raw)
+
+        if not cmd and user and user.get("telegramAwaitingPost"):
+            if user.get("banned"):
+                await db.users.update_one(
+                    {"_id": user["_id"]},
+                    {"$set": {"telegramAwaitingPost": False, "updatedAt": datetime.now(timezone.utc)}},
+                )
+                await reply("⛔ This account is restricted." if lang == "en" else "⛔ Этот аккаунт ограничен.", with_app=True)
+            else:
+                try:
+                    created = await create_post_from_text(db, user, text_raw)
+                except HTTPException as exc:
+                    err_detail = exc.detail
+                    err_msg = err_detail.get("message") if isinstance(err_detail, dict) else str(err_detail)
+                    await reply(str(err_msg), with_app=True)
+                    return
+                except Exception:
+                    logger.exception("telegram create_post_from_text failed")
+                    await reply(
+                        "Could not publish. Try again." if lang == "en" else "Не удалось опубликовать. Попробуйте ещё раз.",
+                        with_app=True,
+                    )
+                    return
+                await db.users.update_one(
+                    {"_id": user["_id"]},
+                    {"$set": {"telegramAwaitingPost": False, "updatedAt": datetime.now(timezone.utc)}},
+                )
+                emotion = created.get("emotion") or "neutral"
+                if lang == "en":
+                    await reply(f"Published\nYour mood: {emotion}", with_app=True)
+                else:
+                    await reply(f"Опубликовано\nВаша эмоция: {emotion}", with_app=True)
+            return
+
+        if not cmd:
+            return
 
         if cmd == "start":
             if lang == "en":
@@ -342,6 +383,8 @@ class TelegramBotRunner:
                     "🧭 Commands\n\n"
                     "/start — intro\n"
                     "/app — open Moodie\n"
+                    "/post — next message becomes your post\n"
+                    "/cancel — cancel /post draft\n"
                     "/today — today’s reflection question + Open button\n"
                     "/song — your current mood song\n"
                     "/notify on|off — all notifications\n"
@@ -355,6 +398,8 @@ class TelegramBotRunner:
                     "🧭 Команды\n\n"
                     "/start — знакомство\n"
                     "/app — открыть Moodie\n"
+                    "/post — следующее сообщение станет постом\n"
+                    "/cancel — отменить черновик после /post\n"
                     "/today — вопрос дня + кнопка «Открыть»\n"
                     "/song — текущая песня настроения\n"
                     "/notify on|off — все уведомления\n"
@@ -370,6 +415,64 @@ class TelegramBotRunner:
                 await reply("🚀 Open Moodie:", with_app=True)
             else:
                 await reply("🚀 Откройте Moodie:", with_app=True)
+            return
+
+        if cmd == "post":
+            if not user:
+                await reply(
+                    "🔗 Link Telegram to your Moodie account first: open the mini app → Settings → Telegram."
+                    if lang == "en"
+                    else "🔗 Сначала привяжите Telegram в приложении: мини-приложение → Настройки → Telegram.",
+                    with_app=True,
+                )
+                return
+            if user.get("banned"):
+                if lang == "en":
+                    await reply("⛔ This account is restricted.")
+                else:
+                    await reply("⛔ Этот аккаунт ограничен.")
+                return
+            await db.users.update_one(
+                {"_id": user["_id"]},
+                {
+                    "$set": {
+                        "telegramAwaitingPost": True,
+                        "telegramChatId": int(chat_id),
+                        "updatedAt": datetime.now(timezone.utc),
+                    }
+                },
+            )
+            if lang == "en":
+                await reply(
+                    "📝 Your next message will be published as a post in Moodie.\n\n"
+                    "Send the text (max 228 characters, no links). /cancel — abort.",
+                    with_app=True,
+                )
+            else:
+                await reply(
+                    "📝 Следующее сообщение будет опубликовано как пост в Moodie.\n\n"
+                    "Пришлите текст (до 228 символов, без ссылок). /cancel — отменить.",
+                    with_app=True,
+                )
+            return
+
+        if cmd == "cancel":
+            had_awaiting = bool(user and user.get("telegramAwaitingPost"))
+            if user:
+                await db.users.update_one(
+                    {"_id": user["_id"]},
+                    {"$set": {"telegramAwaitingPost": False, "updatedAt": datetime.now(timezone.utc)}},
+                )
+            if lang == "en":
+                await reply(
+                    "Cancelled." if had_awaiting else "No draft post to cancel.",
+                    with_app=True,
+                )
+            else:
+                await reply(
+                    "Отменено." if had_awaiting else "Нет черновика поста.",
+                    with_app=True,
+                )
             return
 
         if cmd == "today":

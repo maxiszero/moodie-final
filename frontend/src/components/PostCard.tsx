@@ -5,6 +5,7 @@ import { apiFetch } from '../api/apiClient'
 import { getLang, t } from '../i18n/i18n'
 import { PostText } from './PostText'
 import { softMoodShadow } from '../ui/moodShadow'
+import { applyMoodStyleToTriple, effectiveMoodStyle } from '../ui/moodGradientStyle'
 import { ONBOARDING_EMOTION_CARDS } from '../config/emotionPalette'
 import { setGettingStartedTaskDone } from '../ui/gettingStarted'
 import { PostComments } from './PostComments'
@@ -60,9 +61,12 @@ export function PostCard({
 
     // Для постов держим цвета строго по эмоции, чтобы “злость” не подсвечивалась зелёным из user.currentColor и т.п.
     const palette = ONBOARDING_EMOTION_CARDS.find((c) => c.emotion === emotion)
-    const c1 = palette?.glow || post.color || author?.currentColor || '#9E9E9E'
-    const c2 = palette?.color2 || post.color2 || post.color || author?.currentColor2 || '#757575'
-    const c3 = palette?.color3 || post.color3 || post.color2 || post.color || author?.currentColor3 || '#616161'
+    const c1 = palette?.glow || post.color || author?.currentColor || '#E0E7FF'
+    const c2 = palette?.color2 || post.color2 || post.color || author?.currentColor2 || '#A5B4FC'
+    const c3 = palette?.color3 || post.color3 || post.color2 || post.color || author?.currentColor3 || '#6366F1'
+    const effect = effectiveMoodStyle(s.moodGradientMode, s.theme)
+    const [sc1, sc2, sc3] = applyMoodStyleToTriple(c1, c2, c3, effect)
+    const gradient = `linear-gradient(135deg, ${sc1}, ${sc2}, ${sc3}, ${sc2}, ${sc1})`
     return {
       emoji,
       emotion,
@@ -70,7 +74,8 @@ export function PostCard({
       c1,
       c2,
       c3,
-      gradient: `linear-gradient(135deg, ${c1}, ${c2}, ${c3}, ${c2}, ${c1})`,
+      gradient,
+      shadowHex: sc1,
     }
   }, [
     author?.currentColor,
@@ -84,6 +89,8 @@ export function PostCard({
     post.emoji,
     post.emotion,
     post.intensity,
+    s.moodGradientMode,
+    s.theme,
   ])
 
   const [menuOpen, setMenuOpen] = useState(false)
@@ -153,7 +160,7 @@ export function PostCard({
           ['--post-gradient' as any]: postMood.gradient,
           ['--intensity-val' as any]: postMood.intensity,
           ['--anim-speed' as any]: animSpeed,
-          boxShadow: softMoodShadow(postMood.c1),
+          boxShadow: softMoodShadow(postMood.shadowHex),
         } as any
       }
       onClick={() => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { apiFetch } from '../api/apiClient'
 import { API_URL } from '../config/apiUrl'
@@ -13,6 +13,7 @@ import { t, getLang } from '../i18n/i18n'
 import { applyTheme } from '../ui/theme'
 import { setGettingStartedTaskDone } from '../ui/gettingStarted'
 import { useToast } from '../ui/toastProvider'
+import { moodLinearGradient135 } from '../ui/moodGradientStyle'
 
 function textHasLink(s: string) {
   return /(https?:\/\/\S+|www\.\S+)/i.test(s)
@@ -207,7 +208,10 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
       }
     }
   }, [songPickOpen])
-  const myGradient = `linear-gradient(135deg, ${s.mood.color}, ${s.mood.color2}, ${s.mood.color3}, ${s.mood.color2}, ${s.mood.color})`
+  const myGradient = useMemo(
+    () => moodLinearGradient135(s.mood.color, s.mood.color2, s.mood.color3, s.moodGradientMode, s.theme),
+    [s.mood.color, s.mood.color2, s.mood.color3, s.moodGradientMode, s.theme],
+  )
 
   useEffect(() => {
     // Debounced AI tip prefetch with short-lived cache

@@ -3,7 +3,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import Response
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ASCENDING, DESCENDING
 
@@ -12,6 +13,7 @@ from ..dependencies import current_user, optional_user
 from ..mongo import mongo_json, stringify_mongo
 from ..security import hash_password, verify_password
 from ..services.ai import WeeklyPost, weekly_summary_fallback
+from ..services.settings_csv import parse_csv_to_updates, row_to_csv_bytes, user_doc_to_row
 from .posts import populate_posts, projection_without_private
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -44,9 +46,9 @@ def public_user(user: dict[str, Any] | None) -> dict[str, Any] | None:
             "username": user.get("username", ""),
             "currentEmotion": user.get("currentEmotion") or "neutral",
             "currentEmoji": user.get("currentEmoji") or "😐",
-            "currentColor": user.get("currentColor") or "#9E9E9E",
-            "currentColor2": user.get("currentColor2") or "#757575",
-            "currentColor3": user.get("currentColor3") or "#616161",
+            "currentColor": user.get("currentColor") or "#E0E7FF",
+            "currentColor2": user.get("currentColor2") or "#A5B4FC",
+            "currentColor3": user.get("currentColor3") or "#6366F1",
             "moodSongTitle": user.get("moodSongTitle") or "",
             "moodSongArtist": user.get("moodSongArtist") or "",
             "moodSongPreviewUrl": user.get("moodSongPreviewUrl") or "",
@@ -165,6 +167,87 @@ async def update_settings(
     return {
         "preferredLanguage": fresh.get("preferredLanguage", "ru"),
         "preferredTheme": fresh.get("preferredTheme", "light"),
+    }
+
+
+_SETTINGS_CSV_PROJECTION = {
+    "preferredLanguage": 1,
+    "preferredTheme": 1,
+    "telegramDailyNotify": 1,
+    "telegramActivityNotify": 1,
+    "telegramDailyNotifyHour": 1,
+    "telegramQuietHoursEnabled": 1,
+    "telegramQuietStartHour": 1,
+    "telegramQuietEndHour": 1,
+}
+
+
+@router.get("/me/settings/export")
+async def export_user_settings_csv(
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+    user: dict[str, Any] = Depends(current_user),
+) -> Response:
+    """Скачать текущие настройки как UTF-8 CSV (файловый формат для бэкапа / обмена)."""
+    full = await db.users.find_one({"_id": user["_id"]}, _SETTINGS_CSV_PROJECTION)
+    doc = full if full else user
+    body = row_to_csv_bytes(user_doc_to_row(doc))
+    return Response(
+        content=body,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="moodie_settings.csv"'},
+    )
+
+
+@router.post("/me/settings/import")
+async def import_user_settings_csv(
+    file: UploadFile = File(...),
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+    user: dict[str, Any] = Depends(current_user),
+) -> dict[str, Any]:
+    """Загрузить CSV (экспортированный из /me/settings/export), применить к профилю."""
+    fname = (file.filename or "").lower()
+    if not fname.endswith(".csv"):
+        raise HTTPException(status_code=400, detail={"message": "Upload a .csv file (use export, then edit)."})
+
+    raw = await file.read()
+    if len(raw) > 64 * 1024:
+        raise HTTPException(status_code=400, detail={"message": "File too large"})
+
+    try:
+        text = raw.decode("utf-8-sig")
+        updates = parse_csv_to_updates(text)
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=400, detail={"message": "CSV must be UTF-8"}) from None
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail={"message": str(e)}) from None
+
+    if not updates:
+        raise HTTPException(
+            status_code=400,
+            detail={"message": "No settings to import (fill at least one column)"},
+        )
+
+    if updates.get("preferredLanguage") and user.get("preferredLanguage") != updates["preferredLanguage"]:
+        updates["weeklyAiSummary"] = ""
+        updates["weeklyAiSummaryAt"] = None
+
+    updates["updatedAt"] = datetime.now(timezone.utc)
+    await db.users.update_one({"_id": user["_id"]}, {"$set": updates})
+
+    fresh = await db.users.find_one({"_id": user["_id"]}, _SETTINGS_CSV_PROJECTION)
+    if not fresh:
+        raise HTTPException(status_code=404, detail={"message": "User not found"})
+
+    return {
+        "message": "Settings imported from CSV",
+        "preferredLanguage": fresh.get("preferredLanguage", "ru"),
+        "preferredTheme": fresh.get("preferredTheme", "light"),
+        "telegramDailyNotify": bool(fresh.get("telegramDailyNotify")),
+        "telegramActivityNotify": bool(fresh.get("telegramActivityNotify")),
+        "telegramDailyNotifyHour": fresh.get("telegramDailyNotifyHour", 9),
+        "telegramQuietHoursEnabled": bool(fresh.get("telegramQuietHoursEnabled")),
+        "telegramQuietStartHour": fresh.get("telegramQuietStartHour", 22),
+        "telegramQuietEndHour": fresh.get("telegramQuietEndHour", 8),
     }
 
 

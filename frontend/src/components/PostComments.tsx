@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { Post, PostComment } from '../types'
+import type { MoodGradientMode, Post, PostComment, Theme } from '../types'
 import { useSession } from '../state/SessionContext'
 import { apiFetch } from '../api/apiClient'
 import { getLang, t } from '../i18n/i18n'
 import { PostText } from './PostText'
+import { moodLinearGradient135 } from '../ui/moodGradientStyle'
 
 function authorName(c: PostComment) {
   const u = c.userId
@@ -11,13 +12,14 @@ function authorName(c: PostComment) {
   return '…'
 }
 
-function userGradient(c: PostComment) {
+function userGradient(c: PostComment, moodGradientMode: MoodGradientMode, theme: Theme) {
   const u = c.userId
-  if (!u || typeof u !== 'object') return 'linear-gradient(135deg, #9E9E9E, #757575, #616161, #757575, #9E9E9E)'
-  const c1 = (u as { currentColor?: string }).currentColor || '#9E9E9E'
+  if (!u || typeof u !== 'object')
+    return moodLinearGradient135('#E0E7FF', '#A5B4FC', '#6366F1', moodGradientMode, theme)
+  const c1 = (u as { currentColor?: string }).currentColor || '#E0E7FF'
   const c2 = (u as { currentColor2?: string }).currentColor2 || c1
   const c3 = (u as { currentColor3?: string }).currentColor3 || c2
-  return `linear-gradient(135deg, ${c1}, ${c2}, ${c3}, ${c2}, ${c1})`
+  return moodLinearGradient135(c1, c2, c3, moodGradientMode, theme)
 }
 
 // (mobile sheet preview helpers removed; comments are always inline now)
@@ -73,7 +75,7 @@ function CommentsThread({
             return (
               <li key={c._id} className="post-comments__row">
                 <a className="post-comments__avatar" href={`#/profile/${encodeURIComponent(name)}`} title={name}>
-                  <div className="user-circle user-circle--sm" style={{ background: userGradient(c) }}>
+                  <div className="user-circle user-circle--sm" style={{ background: userGradient(c, s.moodGradientMode, s.theme) }}>
                     {(c.userId && typeof c.userId === 'object' && (c.userId as { currentEmoji?: string }).currentEmoji) || '😐'}
                   </div>
                 </a>

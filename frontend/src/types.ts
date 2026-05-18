@@ -1,6 +1,9 @@
 export type Theme = 'light' | 'dark'
 export type Lang = 'ru' | 'en'
 
+/** Внешний вид градиентов настроения в ленте и профилях */
+export type MoodGradientMode = 'vivid' | 'pastel' | 'auto'
+
 export type UserMood = {
   emotion: string
   emoji: string

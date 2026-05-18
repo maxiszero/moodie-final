@@ -2,13 +2,15 @@ import React, { createContext, useCallback, useContext, useMemo, useState } from
 import { apiFetch, type ApiError } from '../api/apiClient'
 import {
   getStoredLang,
+  getStoredMoodGradientMode,
   getStoredTheme,
   setStoredLang,
+  setStoredMoodGradientMode,
   setStoredTheme,
   setToken,
   storageKeys,
 } from '../config/storage'
-import type { AuthPayload, Lang, MePayload, Theme, UserMood } from '../types'
+import type { AuthPayload, Lang, MePayload, MoodGradientMode, Theme, UserMood } from '../types'
 import { applyTheme } from '../ui/theme'
 import { setLang } from '../i18n/i18n'
 import { getTelegramWebApp } from '../telegram/webApp'
@@ -21,6 +23,7 @@ type SessionState = {
   telegramLinked: boolean
   lang: Lang
   theme: Theme
+  moodGradientMode: MoodGradientMode
   mood: UserMood
 }
 
@@ -28,6 +31,7 @@ type SessionContextValue = SessionState & {
   isAuthed: boolean
   setTheme: (theme: Theme) => void
   setLang: (lang: Lang) => void
+  setMoodGradientMode: (mode: MoodGradientMode) => void
   logout: () => void
   login: (username: string, password: string) => Promise<void>
   register: (username: string, password: string) => Promise<void>
@@ -60,6 +64,7 @@ function loadInitialState(): SessionState {
     telegramLinked: readTelegramLinked(),
     lang: getStoredLang(),
     theme: getStoredTheme(),
+    moodGradientMode: getStoredMoodGradientMode(),
     mood: defaultMood,
   }
 }
@@ -75,9 +80,9 @@ function applyAuthPayload(p: AuthPayload) {
   const mood: UserMood = {
     emotion: p.currentEmotion || 'neutral',
     emoji: p.currentEmoji || '😐',
-    color: p.currentColor || '#9E9E9E',
-    color2: p.currentColor2 || p.currentColor || '#757575',
-    color3: p.currentColor3 || p.currentColor2 || p.currentColor || '#616161',
+    color: p.currentColor || '#E0E7FF',
+    color2: p.currentColor2 || p.currentColor || '#A5B4FC',
+    color3: p.currentColor3 || p.currentColor2 || p.currentColor || '#6366F1',
   }
   localStorage.setItem(storageKeys.currentEmotion, mood.emotion)
   localStorage.setItem(storageKeys.currentEmoji, mood.emoji)
@@ -115,9 +120,9 @@ function applyMePayload(p: MePayload) {
   const mood: UserMood = {
     emotion: p.currentEmotion || 'neutral',
     emoji: p.currentEmoji || '😐',
-    color: p.currentColor || '#9E9E9E',
-    color2: p.currentColor2 || '#757575',
-    color3: p.currentColor3 || '#616161',
+    color: p.currentColor || '#E0E7FF',
+    color2: p.currentColor2 || '#A5B4FC',
+    color3: p.currentColor3 || '#6366F1',
   }
   localStorage.setItem(storageKeys.currentEmotion, mood.emotion)
   localStorage.setItem(storageKeys.currentEmoji, mood.emoji)
@@ -163,6 +168,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setStoredLang(lang)
     setLang(lang)
     setState((s) => ({ ...s, lang }))
+  }, [])
+
+  const setMoodGradientMode = useCallback((mode: MoodGradientMode) => {
+    setStoredMoodGradientMode(mode)
+    setState((s) => ({ ...s, moodGradientMode: mode }))
   }, [])
 
   const login = useCallback(async (username: string, password: string) => {
@@ -318,6 +328,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       isAuthed: Boolean(state.token && state.username),
       setTheme,
       setLang: setLangCb,
+      setMoodGradientMode,
       logout,
       login,
       register,
@@ -327,7 +338,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       unlinkTelegram,
       lastAuthError,
     }),
-    [lastAuthError, linkTelegram, login, logout, refreshMe, register, setLangCb, setTheme, state, telegramLogin, unlinkTelegram],
+    [lastAuthError, linkTelegram, login, logout, refreshMe, register, setLangCb, setMoodGradientMode, setTheme, state, telegramLogin, unlinkTelegram],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
