@@ -4,24 +4,17 @@ Canonical hex triples (`color`, `color2`, `color3`) are defined in:
 
 | Location | File |
 |----------|------|
-| Node API (posts/users enforcement) | `backend/src/config/emotionPalette.ts` |
-| Python API / workers | `backend-py/app/services/palette.py` |
-| Mood analysis service | `python-service/main.py` (fallback rules only; palette should match Node) |
+| **Python API (canonical)** | `backend-py/app/services/palette.py` |
 | Frontend cards / post gradients | `frontend/src/config/emotionPalette.ts` |
 
-Aliases (e.g. `calm` → `calmness`, `inspired` → `inspiration`) live next to the palette in the Node config.
+Aliases (e.g. `calm` → `calmness`, `inspired` → `inspiration`) live in `backend-py/app/services/palette.py`.
 
 ## When changing colors
 
-1. Update `backend/src/config/emotionPalette.ts` first.
-2. Mirror the same keys in `backend-py/app/services/palette.py` and any literal fallbacks in `aiAnalyzer`, `ai.py`, and `python-service/main.py`.
+1. Update `backend-py/app/services/palette.py` first.
+2. Mirror the same keys in `frontend/src/config/emotionPalette.ts` and any literal fallbacks in `backend-py/app/services/ai.py`.
 3. Update `frontend/src/config/emotionPalette.ts` (`ONBOARDING_EMOTION_CARDS`) and, if needed, `legacy.css` `--emotion-*` variables.
-4. Optional: run the one-shot DB migration so old documents get new triples:
-
-```bash
-cd backend
-npx tsx src/scripts/migrateEmotionPalette.ts
-```
+4. Optional: run a one-shot MongoDB update for old user/post documents if emotion triples changed (script in legacy `backend/` is deprecated; prefer a small Python migration if needed).
 
 ## Current triples (reference)
 

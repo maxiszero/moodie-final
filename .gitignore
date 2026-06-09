@@ -22,3 +22,10 @@ python-service/.pytest_cache/
 backend-py/**/__pycache__/
 backend-py/.pytest_cache/
 backend-py/.env
+
+test-results/
+playwright-report/
+blob-report/
+
+backend-py/**/__pycache__/
+.pytest_cache/

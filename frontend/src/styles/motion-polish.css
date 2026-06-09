@@ -1,0 +1,392 @@
+/* Motion polish — smoother UI without rewriting legacy.css */
+
+:root {
+  --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-duration: 0.28s;
+}
+
+button,
+.auth-btn,
+.btn-secondary,
+.feed-tab,
+.mood-chip,
+.post-menu-btn,
+.reaction-btn,
+.profile-follow-modal__close,
+a.post-author-link {
+  transition:
+    background-color var(--motion-duration) var(--motion-ease-out),
+    color var(--motion-duration) var(--motion-ease-out),
+    border-color var(--motion-duration) var(--motion-ease-out),
+    box-shadow 0.32s var(--motion-ease-out),
+    transform 0.22s var(--motion-ease-out),
+    opacity 0.22s ease;
+}
+
+button:active:not(:disabled),
+.auth-btn:active:not(:disabled),
+.btn-secondary:active:not(:disabled),
+.feed-tab:active {
+  transform: scale(0.98);
+}
+
+/* Let main-content + sidebar stay direct grid children of <main> */
+.page-transition {
+  display: contents;
+}
+
+main > .page-transition > .main-content,
+main .page-transition .main-content {
+  min-width: 0;
+  max-width: 100%;
+}
+
+main > .page-transition > .sidebar,
+main .page-transition .sidebar {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Avoid transition:all jank on post cards */
+.post-card {
+  transition:
+    box-shadow 0.32s var(--motion-ease-out),
+    transform 0.32s var(--motion-ease-out) !important;
+}
+
+.post-card.living-post .post-content-container {
+  transition:
+    box-shadow 0.32s var(--motion-ease-out),
+    transform 0.32s var(--motion-ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .post-card.living-post:hover .post-content-container {
+    transform: translateY(-2px);
+  }
+}
+
+/* Glow: less blur/scale = smoother on mobile */
+.post-card.living-post::before {
+  filter: blur(36px);
+  transform: scale(1.1);
+  will-change: auto;
+  transition:
+    opacity 0.45s var(--motion-ease-out),
+    transform 0.55s var(--motion-ease-out);
+}
+
+.post-card.living-post:hover::before {
+  opacity: 0.5;
+  transform: scale(1.14);
+}
+
+/* Anxious “shake” felt jerky — use slow breathing instead */
+.post-card.anim-anxious::before {
+  animation: breathing-soft 5.5s infinite ease-in-out !important;
+}
+
+.post-card.anim-happy::before {
+  animation: float-glow 6s infinite ease-in-out !important;
+}
+
+.feed-tab {
+  transition:
+    background-color 0.28s var(--motion-ease-out),
+    color 0.28s var(--motion-ease-out),
+    transform 0.28s var(--motion-ease-out),
+    box-shadow 0.28s var(--motion-ease-out) !important;
+}
+
+.feed-tab.active {
+  box-shadow: 0 2px 10px rgba(var(--primary-btn-rgb), 0.22);
+}
+
+.feed-dim {
+  animation: feedDimIn 0.28s var(--motion-ease-out);
+}
+
+.post-menu-dropdown {
+  animation: menuPopIn 0.22s var(--motion-ease-out);
+  transform-origin: top right;
+}
+
+@keyframes menuPopIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.loader {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.loader.hidden {
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+}
+
+#create-post,
+.create-post {
+  transition:
+    box-shadow 0.32s var(--motion-ease-out),
+    border-color 0.32s var(--motion-ease-out),
+    transform 0.32s var(--motion-ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .create-post:focus-within {
+    transform: translateY(-1px);
+  }
+}
+
+/* Telegram Mini App: avoid clipped / stacked layout */
+body.telegram-mini-app main {
+  overflow-x: hidden;
+}
+
+body.telegram-mini-app .feed-tabs--scroll {
+  max-width: 100%;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile post card layout: feed-layout.css */
+
+body.telegram-mini-app .mood-week-widget,
+body.telegram-mini-app .create-post,
+body.telegram-mini-app .post-card {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+body.telegram-mini-app .sidebar {
+  margin-top: 8px;
+}
+
+/* Skeleton shimmer */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton {
+  border-radius: 10px;
+  background: linear-gradient(
+    90deg,
+    var(--border-color) 0%,
+    color-mix(in srgb, var(--border-color) 55%, var(--card-bg)) 45%,
+    var(--border-color) 90%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.35s ease-in-out infinite;
+}
+
+.post-skeleton {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.post-skeleton__head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.post-skeleton__avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.post-skeleton__meta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.post-skeleton__line {
+  height: 14px;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.post-skeleton__line--short {
+  width: 42%;
+}
+
+.post-skeleton__line--tiny {
+  width: 28%;
+  height: 10px;
+}
+
+.post-skeleton__line--medium {
+  width: 72%;
+}
+
+.post-skeleton__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.post-skeleton__chip {
+  height: 32px;
+  width: 88px;
+  border-radius: var(--radius-full);
+}
+
+.feed-skeleton-list {
+  margin-bottom: 12px;
+}
+
+.profile-skeleton {
+  padding: 0 0 24px;
+}
+
+.profile-skeleton__banner {
+  height: 140px;
+  border-radius: var(--radius-lg);
+  margin-bottom: 20px;
+}
+
+.profile-skeleton__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+}
+
+.profile-skeleton__avatar {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  margin-top: -44px;
+}
+
+.profile-skeleton__line {
+  height: 14px;
+  width: 70%;
+}
+
+.profile-skeleton__line--title {
+  height: 22px;
+  width: 48%;
+}
+
+.profile-skeleton__line--short {
+  width: 36%;
+}
+
+.post-comments__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+
+.post-comments__skeleton-line {
+  height: 12px;
+  width: 100%;
+}
+
+.post-comments__skeleton-line--short {
+  width: 65%;
+}
+
+/* Animated feed tabs */
+.feed-tabs--animated .feed-tab {
+  position: relative;
+  z-index: 1;
+  background: transparent !important;
+  overflow: hidden;
+}
+
+.feed-tabs--animated .feed-tab.active {
+  color: #fff;
+  box-shadow: none;
+}
+
+.feed-tabs--animated .feed-tab:not(.active) .feed-tab__label {
+  color: var(--text-secondary);
+}
+
+.feed-tabs--animated .feed-tab.active .feed-tab__label {
+  color: #fff;
+}
+
+.feed-tab__pill {
+  position: absolute;
+  inset: 0;
+  background: var(--primary-btn);
+  border-radius: var(--radius-full);
+  z-index: -1;
+}
+
+.feed-tab__label {
+  position: relative;
+  z-index: 1;
+}
+
+/* Reaction micro-animations */
+.reaction-btn {
+  position: relative;
+  overflow: visible;
+}
+
+.reaction-btn__emoji-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reaction-burst {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  pointer-events: none;
+  font-size: 1.1em;
+  z-index: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    opacity: 0.65;
+  }
+  .post-card.living-post:hover .post-content-container,
+  .create-post:focus-within {
+    transform: none;
+  }
+
+  .post-menu-dropdown {
+    animation: none;
+  }
+
+  button:active:not(:disabled),
+  .auth-btn:active:not(:disabled),
+  .feed-tab:active {
+    transform: none;
+  }
+}

@@ -96,6 +96,37 @@ async def get_anonymous_answers(
     }
 
 
+@router.get("/me/history")
+async def get_my_history(
+    limit: int = Query(7, ge=1, le=30),
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+    user: dict[str, Any] = Depends(current_user),
+) -> dict[str, Any]:
+    rows = await (
+        db.dailyanswers.find(
+            {"userId": user["_id"]},
+            {"dayKey": 1, "moodBucket": 1, "questionText": 1, "lang": 1, "text": 1, "createdAt": 1, "updatedAt": 1},
+        )
+        .sort("dayKey", DESCENDING)
+        .limit(limit)
+        .to_list(limit)
+    )
+    return {
+        "answers": [
+            {
+                "dayKey": row.get("dayKey"),
+                "moodBucket": row.get("moodBucket"),
+                "question": row.get("questionText"),
+                "lang": row.get("lang"),
+                "text": row.get("text"),
+                "createdAt": stringify_mongo(row.get("createdAt")),
+                "updatedAt": stringify_mongo(row.get("updatedAt")),
+            }
+            for row in rows
+        ]
+    }
+
+
 @router.post("/answer", status_code=201)
 async def post_answer(
     body: dict[str, Any],

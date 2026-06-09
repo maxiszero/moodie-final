@@ -61,6 +61,55 @@ async def get_admin_posts(
     return output
 
 
+@router.get("/reported-posts")
+async def get_reported_posts(
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+    admin: dict[str, Any] = Depends(current_admin),
+) -> list[dict[str, Any]]:
+    _ = admin
+    posts = await (
+        db.posts.find({"reports": {"$gte": 1}}, {"feedQuality": 0, "feedSortScore": 0})
+        .sort([("reports", DESCENDING), ("createdAt", DESCENDING)])
+        .limit(100)
+        .to_list(100)
+    )
+    author_ids = [post.get("userId") for post in posts if post.get("userId")]
+    authors = {}
+    if author_ids:
+        async for author in db.users.find({"_id": {"$in": author_ids}}, ADMIN_POST_AUTHOR_FIELDS):
+            authors[str(author["_id"])] = mongo_json(author)
+
+    output = []
+    for post in posts:
+        author_id = str(post.get("userId")) if post.get("userId") else ""
+        item = mongo_json(post)
+        if author_id in authors:
+            item["userId"] = authors[author_id]
+        output.append(item)
+    return output
+
+
+@router.patch("/posts/{post_id}/hidden")
+async def set_post_hidden(
+    post_id: str,
+    body: dict[str, Any],
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+    admin: dict[str, Any] = Depends(current_admin),
+) -> dict[str, Any]:
+    _ = admin
+    hidden = body.get("hidden") if isinstance(body, dict) else None
+    if not isinstance(hidden, bool):
+        raise HTTPException(status_code=400, detail={"message": 'Field "hidden" (boolean) is required'})
+    post = await db.posts.find_one({"_id": object_id(post_id, "post id")})
+    if not post:
+        raise HTTPException(status_code=404, detail={"message": "Post not found"})
+    await db.posts.update_one(
+        {"_id": post["_id"]},
+        {"$set": {"hidden": hidden, "updatedAt": datetime.now(timezone.utc)}},
+    )
+    return {"id": str(post["_id"]), "hidden": hidden, "reports": post.get("reports", 0)}
+
+
 @router.patch("/users/{user_id}/ban")
 async def set_user_ban(
     user_id: str,

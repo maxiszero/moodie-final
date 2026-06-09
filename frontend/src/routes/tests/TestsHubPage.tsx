@@ -91,6 +91,16 @@ export function TestsHubPage() {
             )}
           </Link>
         </li>
+        <li>
+          <div className="tests-card tests-card--more tests-card--disabled" aria-disabled="true">
+            <div className="tests-card__shine" aria-hidden />
+            <span className="tests-card__icon" aria-hidden>
+              ✨
+            </span>
+            <span className="tests-card__title">{t('tests_card_more_title')}</span>
+            <span className="tests-card__desc">{t('tests_card_more_desc')}</span>
+          </div>
+        </li>
       </ul>
 
       {history.length > 0 ? (

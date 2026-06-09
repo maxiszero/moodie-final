@@ -12,8 +12,16 @@ from ..dependencies import banned_user_ids, current_user, optional_user
 from ..mongo import mongo_json, object_id, stringify_mongo
 from ..realtime import emit_new_post
 from ..services.ai import analyze_emotion
+from ..services.notify import (
+    load_notify_user,
+    notify_post_comment,
+    notify_post_reaction,
+    notify_post_relatable,
+    notify_same_mood_followers,
+)
 from ..services.mood_song import pick_mood_song, song_payload
 from ..services.palette import normalize_emotion, palette_for_emotion
+from ..services.post_search import post_text_search_filter
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
@@ -266,10 +274,19 @@ async def search_posts(
         raise HTTPException(status_code=400, detail={"message": "Query too long"})
     banned_ids = await banned_user_ids(db)
     excluded = excluded_author_ids(banned_ids, user)
-    query: dict[str, Any] = {"text": {"$regex": re.escape(raw), "$options": "i"}, "hidden": {"$ne": True}}
+    query = post_text_search_filter(raw)
     if excluded:
         query["userId"] = {"$nin": excluded}
-    posts = await db.posts.find(query, projection_without_private()).sort("createdAt", DESCENDING).limit(10).to_list(10)
+    if "$text" in query:
+        projection = {**projection_without_private(), "score": {"$meta": "textScore"}}
+        posts = await (
+            db.posts.find(query, projection)
+            .sort([("score", {"$meta": "textScore"}), ("createdAt", DESCENDING)])
+            .limit(10)
+            .to_list(10)
+        )
+    else:
+        posts = await db.posts.find(query, projection_without_private()).sort("createdAt", DESCENDING).limit(10).to_list(10)
     return await populate_posts(db, posts, user)
 
 
@@ -352,6 +369,7 @@ async def create_post_from_text(db: AsyncIOMotorDatabase, user: dict[str, Any], 
     populated = await populate_posts(db, [doc], user)
     populated[0]["isFollowingAuthor"] = False
     await emit_new_post(populated[0])
+    await notify_same_mood_followers(db, user, doc["emotion"])
     return populated[0]
 
 
@@ -506,7 +524,7 @@ async def toggle_reaction(
     reaction_type = body.get("reactionType") if isinstance(body, dict) else None
     if reaction_type not in VALID_REACTIONS:
         raise HTTPException(status_code=400, detail={"message": "Invalid reaction type"})
-    post = await db.posts.find_one({"_id": object_id(post_id), "hidden": {"$ne": True}}, {"reactions": 1})
+    post = await db.posts.find_one({"_id": object_id(post_id), "hidden": {"$ne": True}}, {"reactions": 1, "userId": 1})
     if not post:
         raise HTTPException(status_code=404, detail={"message": "Post not found"})
     reactions = post.get("reactions") or []
@@ -516,6 +534,10 @@ async def toggle_reaction(
     else:
         reactions.append({"type": reaction_type, "userId": user["_id"]})
     await db.posts.update_one({"_id": post["_id"]}, {"$set": {"reactions": reactions, "updatedAt": datetime.now(timezone.utc)}})
+    if not exists and str(post.get("userId")) != str(user["_id"]):
+        author = await load_notify_user(db, post.get("userId"))
+        if author:
+            await notify_post_reaction(db, user, author, post["_id"])
     return {"message": "Reaction removed" if exists else "Reaction added", "reactions": stringify_mongo(reactions)}
 
 
@@ -525,14 +547,19 @@ async def toggle_relatable(
     db: AsyncIOMotorDatabase = Depends(db_dependency),
     user: dict[str, Any] = Depends(current_user),
 ) -> dict[str, Any]:
-    post = await db.posts.find_one({"_id": object_id(post_id), "hidden": {"$ne": True}}, {"relatableBy": 1, "relatable": 1})
+    post = await db.posts.find_one({"_id": object_id(post_id), "hidden": {"$ne": True}}, {"relatableBy": 1, "relatable": 1, "userId": 1})
     if not post:
         raise HTTPException(status_code=404, detail={"message": "Post not found"})
     active = any(str(item) == str(user["_id"]) for item in post.get("relatableBy", []))
     update = {"$pull": {"relatableBy": user["_id"]}, "$inc": {"relatable": -1}} if active else {"$addToSet": {"relatableBy": user["_id"]}, "$inc": {"relatable": 1}}
     await db.posts.update_one({"_id": post["_id"]}, update)
     fresh = await db.posts.find_one({"_id": post["_id"]}, {"relatableBy": 1, "relatable": 1})
-    return {"relatable": max(0, fresh.get("relatable", 0)), "relatableBy": stringify_mongo(fresh.get("relatableBy", []))}
+    relatable_count = max(0, fresh.get("relatable", 0))
+    if not active and str(post.get("userId")) != str(user["_id"]):
+        author = await load_notify_user(db, post.get("userId"))
+        if author:
+            await notify_post_relatable(db, user, author, post["_id"], relatable_count)
+    return {"relatable": relatable_count, "relatableBy": stringify_mongo(fresh.get("relatableBy", []))}
 
 
 @router.post("/{post_id}/report")
@@ -606,7 +633,7 @@ async def add_comment(
     db: AsyncIOMotorDatabase = Depends(db_dependency),
     user: dict[str, Any] = Depends(current_user),
 ) -> dict[str, Any]:
-    post = await db.posts.find_one({"_id": object_id(post_id), "hidden": {"$ne": True}}, {"_id": 1})
+    post = await db.posts.find_one({"_id": object_id(post_id), "hidden": {"$ne": True}}, {"_id": 1, "userId": 1})
     if not post:
         raise HTTPException(status_code=404, detail={"message": "Post not found"})
     text = body.get("text") if isinstance(body, dict) else ""
@@ -622,6 +649,10 @@ async def add_comment(
     result = await db.comments.insert_one(doc)
     doc["_id"] = result.inserted_id
     await db.posts.update_one({"_id": post["_id"]}, {"$inc": {"commentsCount": 1}})
+    if str(post.get("userId")) != str(user["_id"]):
+        owner = await load_notify_user(db, post.get("userId"))
+        if owner:
+            await notify_post_comment(db, user, owner, post["_id"])
     doc["userId"] = mongo_json(await db.users.find_one({"_id": user["_id"]}, AUTHOR_FIELDS))
     return mongo_json(doc)
 

@@ -1,4 +1,4 @@
-import { HashRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { AppHeader } from './layout/AppHeader'
 import { AppFooter } from './layout/AppFooter'
 import { useSession } from './state/SessionContext'
@@ -10,9 +10,11 @@ import { storageKeys } from './config/storage'
 import { GettingStartedModal } from './components/GettingStartedModal'
 import { TelegramOnboardingModal } from './components/TelegramOnboardingModal'
 import { GettingStartedWidget } from './components/GettingStartedWidget'
+import { MoodNeighborsPanel } from './components/MoodNeighborsPanel'
+import { EveningReviewCard } from './components/EveningReviewCard'
 import { Seo } from './components/Seo'
 import { AppMobileNav } from './layout/AppMobileNav'
-import { prefetchFitRewardSlot } from './config/fitRewardUrl'
+import { PageTransition } from './components/PageTransition'
 import { isTelegramMiniApp } from './telegram/webApp'
 
 const FeedPage = lazy(() => import('./routes/FeedPage').then(({ FeedPage }) => ({ default: FeedPage })))
@@ -48,7 +50,7 @@ function AppShell() {
     <>
       <AppHeader />
       <main>
-        <Outlet />
+        <PageTransition />
       </main>
       <AppMobileNav />
       <AppFooter />
@@ -71,6 +73,8 @@ function FeedHome() {
         <FeedPage />
       </div>
       <aside className="sidebar" id="sidebar">
+        <MoodNeighborsPanel />
+        <EveningReviewCard />
         <GettingStartedWidget compactLink />
       </aside>
     </FeedMoodProvider>
@@ -107,19 +111,28 @@ export default function App() {
 
   useEffect(() => {
     const hasSeenOnboarding = localStorage.getItem(storageKeys.hasSeenOnboarding)
-    if (!hasSeenOnboarding) setOnboardingOpen(true)
-
-    const hasSeenWelcome = localStorage.getItem(storageKeys.welcomeSeen)
-    if (!hasSeenWelcome) setWelcomeOpen(true)
-
+    if (!hasSeenOnboarding) {
+      setOnboardingOpen(true)
+      return
+    }
+    if (!localStorage.getItem(storageKeys.welcomeSeen)) {
+      setWelcomeOpen(true)
+    }
     if (isTelegramMiniApp() && !localStorage.getItem(storageKeys.hasSeenTelegramOnboarding)) {
       setTelegramOnboardingOpen(true)
     }
   }, [])
 
   useEffect(() => {
-    void prefetchFitRewardSlot()
-  }, [])
+    if (onboardingOpen) return
+    if (!localStorage.getItem(storageKeys.hasSeenOnboarding)) return
+    if (!localStorage.getItem(storageKeys.welcomeSeen)) {
+      setWelcomeOpen(true)
+    }
+    if (isTelegramMiniApp() && !localStorage.getItem(storageKeys.hasSeenTelegramOnboarding)) {
+      setTelegramOnboardingOpen(true)
+    }
+  }, [onboardingOpen])
 
   useEffect(() => {
     if (!s.isAuthed) return
@@ -131,7 +144,7 @@ export default function App() {
   }, [s.isAuthed])
 
   return (
-    <HashRouter>
+    <BrowserRouter>
       <Seo />
       <Suspense fallback={<div className="main-content" aria-live="polite" />}>
         <Routes>
@@ -179,6 +192,6 @@ export default function App() {
       />
       <GettingStartedModal open={gettingStartedOpen} onClose={() => setGettingStartedOpen(false)} />
       <TelegramOnboardingModal open={telegramOnboardingOpen} onClose={() => setTelegramOnboardingOpen(false)} />
-    </HashRouter>
+    </BrowserRouter>
   )
 }

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
+import { Link, useNavigate } from 'react-router-dom'
 import type { Post, PostComment, PostReaction } from '../types'
 import { useSession } from '../state/SessionContext'
 import { apiFetch } from '../api/apiClient'
@@ -12,6 +14,8 @@ import { setGettingStartedTaskDone } from '../ui/gettingStarted'
 import { PostComments } from './PostComments'
 import { showToast } from '../ui/toast'
 import { MoodSongPreview, moodSongFromPost } from './MoodSongPreview'
+import { ReactionButton } from './ReactionButton'
+import { cardEnter } from '../ui/motion'
 
 const POST_EDIT_WINDOW_MS = 15 * 60 * 1000
 
@@ -46,6 +50,7 @@ export function PostCard({
   commentsOpen,
   isCommentsFocus,
   registerRef,
+  enterDelay = 0,
 }: {
   post: Post
   onPostUpdated: (next: Post) => void
@@ -54,8 +59,11 @@ export function PostCard({
   commentsOpen?: boolean
   isCommentsFocus?: boolean
   registerRef?: (el: HTMLDivElement | null) => void
+  enterDelay?: number
 }) {
   const s = useSession()
+  const reduceMotion = useReducedMotion()
+  const nav = useNavigate()
   const author = authorFrom(post)
   const authorName = author?.username || 'unknown'
 
@@ -198,10 +206,14 @@ export function PostCard({
   }, [supportOpen])
 
   return (
-    <div
+    <motion.div
       className={`post-card living-post ${animClass} ${isCommentsFocus ? 'post-card--comments-focus' : ''}`}
       id={`post-${post._id}`}
       ref={registerRef}
+      initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={reduceMotion ? { duration: 0 } : cardEnter(enterDelay)}
+      whileTap={reduceMotion ? undefined : { scale: 0.995 }}
       style={
         {
           ['--post-gradient' as any]: postMood.gradient,
@@ -265,7 +277,7 @@ export function PostCard({
                   onClick={async () => {
                     setMenuOpen(false)
                     await apiFetch(`/users/${encodeURIComponent(authorName)}/block`, { method: 'POST' })
-                    window.location.hash = '#/'
+                    nav('/')
                   }}
                 >
                   <span>🚫</span>
@@ -341,9 +353,9 @@ export function PostCard({
           </div>
           <div className="post-meta">
             <div className="post-author-row">
-              <a className="post-author profile-link" href={`#/profile/${encodeURIComponent(authorName)}`}>
+              <Link className="post-author profile-link" to={`/profile/${encodeURIComponent(authorName)}`}>
                 {authorName}
-              </a>
+              </Link>
               <span className="emotion-label" style={{ background: 'var(--bg-color)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)' }}>
                 {postMood.emotion}
               </span>
@@ -413,10 +425,11 @@ export function PostCard({
         </div>
 
         <div className="reaction-group">
-          <button
-            type="button"
-            className={`reaction-btn ${isReactionActive(post.reactions, 'feel_this', s.userId) ? 'active' : ''}`}
-            data-reaction-type="feel_this"
+          <ReactionButton
+            emoji="🫂"
+            label={t('reaction_feel_this')}
+            count={reactionCount(post.reactions, 'feel_this')}
+            active={isReactionActive(post.reactions, 'feel_this', s.userId)}
             onClick={async () => {
               const data = await apiFetch<{ reactions: PostReaction[] }>(`/posts/${post._id}/reaction`, {
                 method: 'POST',
@@ -425,15 +438,12 @@ export function PostCard({
               onPostUpdated({ ...post, reactions: data.reactions })
               setGettingStartedTaskDone('first_reaction')
             }}
-          >
-            <span>🫂</span>
-            <span>{t('reaction_feel_this')}</span>
-            <span className="reaction-count">{reactionCount(post.reactions, 'feel_this')}</span>
-          </button>
-          <button
-            type="button"
-            className={`reaction-btn ${isReactionActive(post.reactions, 'stay_strong', s.userId) ? 'active' : ''}`}
-            data-reaction-type="stay_strong"
+          />
+          <ReactionButton
+            emoji="🛡️"
+            label={t('reaction_stay_strong')}
+            count={reactionCount(post.reactions, 'stay_strong')}
+            active={isReactionActive(post.reactions, 'stay_strong', s.userId)}
             onClick={async () => {
               const data = await apiFetch<{ reactions: PostReaction[] }>(`/posts/${post._id}/reaction`, {
                 method: 'POST',
@@ -442,15 +452,12 @@ export function PostCard({
               onPostUpdated({ ...post, reactions: data.reactions })
               setGettingStartedTaskDone('first_reaction')
             }}
-          >
-            <span>🛡️</span>
-            <span>{t('reaction_stay_strong')}</span>
-            <span className="reaction-count">{reactionCount(post.reactions, 'stay_strong')}</span>
-          </button>
-          <button
-            type="button"
-            className={`reaction-btn ${isReactionActive(post.reactions, 'hits_hard', s.userId) ? 'active' : ''}`}
-            data-reaction-type="hits_hard"
+          />
+          <ReactionButton
+            emoji="🔥"
+            label={t('reaction_hits_hard')}
+            count={reactionCount(post.reactions, 'hits_hard')}
+            active={isReactionActive(post.reactions, 'hits_hard', s.userId)}
             onClick={async () => {
               const data = await apiFetch<{ reactions: PostReaction[] }>(`/posts/${post._id}/reaction`, {
                 method: 'POST',
@@ -459,24 +466,19 @@ export function PostCard({
               onPostUpdated({ ...post, reactions: data.reactions })
               setGettingStartedTaskDone('first_reaction')
             }}
-          >
-            <span>🔥</span>
-            <span>{t('reaction_hits_hard')}</span>
-            <span className="reaction-count">{reactionCount(post.reactions, 'hits_hard')}</span>
-          </button>
-          <button
-            type="button"
-            className={`reaction-btn ${isRelatable ? 'active' : ''}`}
+          />
+          <ReactionButton
+            emoji="🤝"
+            label={t('reaction_relatable')}
+            count={post.relatable || 0}
+            countClassName="relatable-count"
+            active={isRelatable}
             onClick={async () => {
               const data = await apiFetch<{ relatable: number; relatableBy: string[] }>(`/posts/${post._id}/relatable`, { method: 'POST' })
               onPostUpdated({ ...post, relatable: data.relatable, relatableBy: data.relatableBy })
               setGettingStartedTaskDone('first_reaction')
             }}
-          >
-            <span>🤝</span>
-            <span>{t('reaction_relatable')}</span>
-            <span className="relatable-count">{post.relatable || 0}</span>
-          </button>
+          />
 
           <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
             <button
@@ -549,7 +551,7 @@ export function PostCard({
           onOpenChange={(open) => onCommentsOpenChange?.(open, post._id)}
         />
       </div>
-    </div>
+    </motion.div>
   )
 }
 

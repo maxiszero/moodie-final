@@ -74,7 +74,7 @@ def _profile_post_url(username: str, post_id: str) -> str | None:
     if not base.startswith("https://"):
         return None
     safe_user = (username or "Moodie").strip() or "Moodie"
-    return f"{base}/#/profile/{safe_user}?post={post_id}"
+    return f"{base}/profile/{safe_user}?post={post_id}"
 
 
 def _quick_menu_markup(lang: str) -> dict[str, Any]:

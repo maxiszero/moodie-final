@@ -47,7 +47,7 @@ async def share_profile(username: str, request: Request) -> HTMLResponse:
     if not user:
         raise HTTPException(status_code=404, detail="Not found")
     base = _app_base(request)
-    hash_url = f"{base}/#/profile/{user.get('username', username)}"
+    hash_url = f"{base}/profile/{user.get('username', username)}"
     emoji = user.get("currentEmoji") or "😐"
     emotion = user.get("currentEmotion") or "neutral"
     title = f"@{user.get('username', username)} — Moodie"
@@ -71,7 +71,7 @@ async def share_post(post_id: str, request: Request) -> HTMLResponse:
         raise HTTPException(status_code=404, detail="Not found")
     base = _app_base(request)
     author_name = author.get("username") or "Moodie"
-    hash_url = f"{base}/#/profile/{author_name}?post={post_id}"
+    hash_url = f"{base}/profile/{author_name}?post={post_id}"
     snippet = " ".join(str(post.get("text") or "").split())[:160]
     emoji = post.get("emoji") or "😐"
     title = f"{emoji} @{author_name} on Moodie"

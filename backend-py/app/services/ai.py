@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Literal
 
 import httpx
@@ -264,3 +264,141 @@ def weekly_summary_fallback(posts: list[WeeklyPost], lang: str) -> str:
     if top:
         line += f" По авто-тегам чаще «{top[0]}»{', также «' + second[0] + '»' if second else ''}."
     return line
+
+
+def _gemini_key() -> str:
+    raw = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_AI_API_KEY") or ""
+    return raw.strip().strip("\"'")
+
+
+def _parse_weekly_summary_json(raw: str) -> str:
+    if not raw or not isinstance(raw, str):
+        return ""
+    s = raw.strip()
+    if s.startswith("```"):
+        s = re.sub(r"^```(?:json)?\s*", "", s, flags=re.I)
+        s = re.sub(r"\s*```\s*$", "", s)
+    data = json.loads(s)
+    summary = data.get("summary") if isinstance(data, dict) else ""
+    if not isinstance(summary, str) or not summary.strip():
+        return ""
+    summary = summary.strip()
+    return summary if len(summary) <= 500 else summary[:497] + "…"
+
+
+def _weekly_summary_system_prompt(lang_name: str) -> str:
+    return f"""You write a short weekly reflection for a mood journal app.
+
+INPUT FORMAT: Lines are posts from the LAST 7 DAYS only:
+[YYYY-MM-DD] (automated_emotion_tag) full post text
+
+YOUR JOB (content-first):
+1. Read the POST TEXT as the PRIMARY evidence. Infer what the person talks about: situations, worries, wins, relationships, work, health, plans, self-talk—only from their actual words.
+2. The (automated_emotion_tag) is a rough machine guess—use it only as a light hint. Do NOT write a report that mainly lists or paraphrases emotion labels (e.g. "first anxious then happy"). Instead, synthesize what the week was about for them as a person.
+3. Write 2–3 sentences, max ~380 characters: reflective, warm, non-judgmental. No medical or psychiatric diagnosis. No "you have depression/anxiety disorder".
+4. If posts contradict each other, acknowledge nuance (e.g. mixed week, tension vs relief)—still grounded in what they wrote.
+5. Output language: {lang_name} only.
+
+Respond with ONLY valid JSON: {{"summary":"..."}}"""
+
+
+async def summarize_weekly_mood(posts: list[WeeklyPost], lang: str) -> str:
+    if not posts:
+        return ""
+
+    gemini_key = _gemini_key()
+    groq = groq_keys()
+    primary = settings.ai_weekly_primary
+    gemini_model = settings.gemini_model
+    lang_name = "English" if lang == "en" else "Russian"
+
+    lines: list[str] = []
+    for post in posts[:60]:
+        created = post.createdAt
+        if isinstance(created, datetime):
+            day = created.astimezone(timezone.utc).date().isoformat()
+        elif isinstance(created, str) and created:
+            day = created[:10]
+        else:
+            day = datetime.now(timezone.utc).date().isoformat()
+        em = post.emotion or "neutral"
+        snippet = re.sub(r"\s+", " ", (post.text or "").strip())[:400]
+        lines.append(f"[{day}] ({em}) {snippet}")
+
+    bundle = "\n".join(lines)
+    system_prompt = _weekly_summary_system_prompt(lang_name)
+    user_block = f"Posts (newest lines may appear first):\n{bundle}"
+
+    async def try_gemini() -> str:
+        if not gemini_key:
+            return ""
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={gemini_key}"
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            res = await client.post(
+                url,
+                json={
+                    "systemInstruction": {"parts": [{"text": system_prompt}]},
+                    "contents": [{"role": "user", "parts": [{"text": user_block}]}],
+                    "generationConfig": {
+                        "temperature": 0.5,
+                        "maxOutputTokens": 512,
+                        "responseMimeType": "application/json",
+                    },
+                },
+            )
+            if res.status_code >= 400:
+                return ""
+            data = res.json()
+            raw = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text")
+            if not isinstance(raw, str):
+                return ""
+            try:
+                return _parse_weekly_summary_json(raw)
+            except json.JSONDecodeError:
+                return ""
+
+    async def try_groq() -> str:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            for api_key in groq:
+                try:
+                    res = await client.post(
+                        "https://api.groq.com/openai/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                        json={
+                            "model": settings.groq_model,
+                            "messages": [
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": user_block},
+                            ],
+                            "response_format": {"type": "json_object"},
+                            "max_tokens": 280,
+                            "temperature": 0.5,
+                        },
+                    )
+                    if res.status_code >= 400:
+                        continue
+                    data = res.json()
+                    raw = data["choices"][0]["message"]["content"].strip()
+                    parsed = _parse_weekly_summary_json(raw)
+                    if parsed:
+                        return parsed
+                except Exception:
+                    continue
+        return ""
+
+    out = ""
+    if primary == "gemini":
+        out = await try_gemini()
+        if not out:
+            out = await try_groq()
+    elif primary == "groq":
+        out = await try_groq()
+        if not out:
+            out = await try_gemini()
+    else:
+        if gemini_key:
+            out = await try_gemini()
+        if not out:
+            out = await try_groq()
+
+    return out or weekly_summary_fallback(posts, lang)

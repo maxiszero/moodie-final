@@ -14,8 +14,8 @@ export function resolveMoodieApiUrl(): string {
   }
 
   const lan = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(hostname || '')
-  if (lan && portStr && portStr !== '5000') {
-    return `${protocol}//${hostname}:5000/api`
+  if (lan && portStr && portStr !== '8000') {
+    return `${protocol}//${hostname}:8000/api`
   }
 
   const metaBase = document.querySelector<HTMLMetaElement>('meta[name="moodie-app-base"]')

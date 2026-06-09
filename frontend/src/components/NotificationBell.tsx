@@ -59,7 +59,7 @@ export function NotificationBell() {
     markRead(n.id)
     refresh()
     setOpen(false)
-    if (n.href) nav(n.href.replace(/^#/, ''))
+    if (n.href) nav(n.href.replace(/^#\/?/, '/'))
   }
 
   return (

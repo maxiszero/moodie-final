@@ -43,7 +43,7 @@ export function TelegramOnboardingModal({ open, onClose }: Props) {
         </ol>
         <div className="tg-onboarding-actions">
           {!s.telegramLinked ? (
-            <a className="tg-onboarding-btn tg-onboarding-btn--primary" href="#/settings">
+            <a className="tg-onboarding-btn tg-onboarding-btn--primary" href="/settings">
               {t('tg_onboarding_open_settings')}
             </a>
           ) : null}

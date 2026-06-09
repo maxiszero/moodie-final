@@ -1,0 +1,38 @@
+/* Feed & post card layout — extracted from legacy.css for easier maintenance */
+
+.feed {
+  --feed-post-gap: 32px;
+}
+
+.feed > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--feed-post-gap);
+}
+
+@media (min-width: 641px) {
+  .feed {
+    --feed-post-gap: 52px;
+  }
+}
+
+@media (max-width: 640px) {
+  .post-card.living-post {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .post-card.living-post::before {
+    display: none !important;
+  }
+
+  .post-card.living-post .post-content-container {
+    border: none;
+    box-shadow: none !important;
+    padding: 16px;
+  }
+
+  .post-card.living-post:hover .post-content-container {
+    box-shadow: none !important;
+  }
+}

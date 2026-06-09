@@ -15,8 +15,12 @@ function socketBaseUrl(): string {
 }
 
 export function getSocket(): Socket {
-  if (socket && socket.connected) return socket
-  socket = io(socketBaseUrl(), { transports: ['websocket', 'polling'] })
+  if (!socket) {
+    socket = io(socketBaseUrl(), {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+    })
+  }
   return socket
 }
 

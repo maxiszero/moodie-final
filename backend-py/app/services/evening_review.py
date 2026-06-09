@@ -1,13 +1,32 @@
-"""Evening day review — one check-in per day via Telegram."""
+"""Evening day review — Telegram bot and web check-in (one per local day)."""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 VALID_CHOICES = frozenset({"hard", "ok", "good"})
+
+
+def _timezone_offset_minutes(user: dict[str, Any]) -> int:
+    try:
+        offset = int(user.get("telegramTimezoneOffsetMinutes", 0))
+    except (TypeError, ValueError):
+        offset = 0
+    return max(-840, min(840, offset))
+
+
+def user_day_key(user: dict[str, Any], value: datetime | None = None) -> str:
+    now = value or datetime.now(timezone.utc)
+    local = now - timedelta(minutes=_timezone_offset_minutes(user))
+    return local.date().isoformat()
+
+
+async def get_today_review(db: AsyncIOMotorDatabase, user_id: Any, day_key: str) -> dict[str, Any] | None:
+    row = await db.eveningreviews.find_one({"userId": user_id, "dayKey": day_key})
+    return row if isinstance(row, dict) else None
 
 
 def evening_choice_label(choice: str, lang: str) -> str:

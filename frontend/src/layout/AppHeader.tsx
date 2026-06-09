@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import { LOGO_FALLBACK, LOGO_LIGHT } from '../config/logo'
 import { t } from '../i18n/i18n'
 import { useRealtime } from '../realtime/RealtimeContext'
@@ -77,25 +77,23 @@ export function AppHeader() {
             </NavLink>
           ) : null}
           <div className={`header-profile ${guestLenta ? 'hidden' : ''}`}>
-            <div
-              className="user-circle user-circle--sm"
-              id="headerUserCircle"
-              title=""
-              style={{
-                cursor: 'pointer',
-                background: avatarGradient,
-              }}
-              onClick={() => s.username && (window.location.hash = `#/profile/${encodeURIComponent(s.username)}`)}
-            >
-              {s.mood.emoji || '😐'}
-            </div>
-            <button
-              type="button"
-              id="userInfo"
-              onClick={() => s.username && (window.location.hash = `#/profile/${encodeURIComponent(s.username)}`)}
-            >
-              {s.username ? `@${s.username}` : ''}
-            </button>
+            {s.username ? (
+              <Link
+                to={`/profile/${encodeURIComponent(s.username)}`}
+                className="header-profile__link"
+                id="headerProfileLink"
+              >
+                <div
+                  className="user-circle user-circle--sm"
+                  id="headerUserCircle"
+                  title=""
+                  style={{ background: avatarGradient }}
+                >
+                  {s.mood.emoji || '😐'}
+                </div>
+                <span id="userInfo">@{s.username}</span>
+              </Link>
+            ) : null}
           </div>
         </nav>
       </div>

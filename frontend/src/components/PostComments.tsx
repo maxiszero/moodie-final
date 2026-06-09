@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { Link } from 'react-router-dom'
 import type { MoodGradientMode, Post, PostComment, Theme } from '../types'
 import { useSession } from '../state/SessionContext'
 import { apiFetch } from '../api/apiClient'
 import { getLang, t } from '../i18n/i18n'
 import { PostText } from './PostText'
 import { moodLinearGradient135 } from '../ui/moodGradientStyle'
+import { smoothEase } from '../ui/motion'
+import { Skeleton } from './ui/Skeleton'
 
 function authorName(c: PostComment) {
   const u = c.userId
@@ -51,6 +55,8 @@ function CommentsThread({
   onRemove,
   onRequestClose,
 }: PanelProps) {
+  const reduceMotion = useReducedMotion()
+
   return (
     <>
       {n > 0 && (
@@ -61,29 +67,40 @@ function CommentsThread({
         </div>
       )}
 
-      {n > 0 && loading && items.length === 0 ? <div className="post-comments__status">{t('comment_loading')}</div> : null}
+      {n > 0 && loading && items.length === 0 ? (
+        <div className="post-comments__skeleton" aria-hidden>
+          <Skeleton className="post-comments__skeleton-line" />
+          <Skeleton className="post-comments__skeleton-line post-comments__skeleton-line--short" />
+        </div>
+      ) : null}
       {err ? <div className="post-comments__err">{err}</div> : null}
       {n > 0 && !loading && items.length === 0 && !err ? <p className="post-comments__empty">{t('comments_empty_list')}</p> : null}
       {n === 0 ? <p className="post-comments__hint">{t('comments_be_first')}</p> : null}
 
       {items.length > 0 && (
         <ul className="post-comments__list">
-          {items.map((c) => {
+          {items.map((c, index) => {
             const name = authorName(c)
             const uid = c.userId && typeof c.userId === 'object' && '_id' in c.userId ? String((c.userId as { _id: string })._id) : ''
             const own = s.userId && uid && String(s.userId) === String(uid)
             return (
-              <li key={c._id} className="post-comments__row">
-                <a className="post-comments__avatar" href={`#/profile/${encodeURIComponent(name)}`} title={name}>
+              <motion.li
+                key={c._id}
+                className="post-comments__row"
+                initial={reduceMotion ? false : { opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.28, delay: Math.min(index, 6) * 0.04, ease: smoothEase }}
+              >
+                <Link className="post-comments__avatar" to={`/profile/${encodeURIComponent(name)}`} title={name}>
                   <div className="user-circle user-circle--sm" style={{ background: userGradient(c, s.moodGradientMode, s.theme) }}>
                     {(c.userId && typeof c.userId === 'object' && (c.userId as { currentEmoji?: string }).currentEmoji) || '😐'}
                   </div>
-                </a>
+                </Link>
                 <div className="post-comments__body">
                   <div className="post-comments__meta">
-                    <a className="post-comments__author" href={`#/profile/${encodeURIComponent(name)}`}>
+                    <Link className="post-comments__author" to={`/profile/${encodeURIComponent(name)}`}>
                       {name}
-                    </a>
+                    </Link>
                     <span className="post-comments__time">
                       {new Date(c.createdAt).toLocaleString(getLang() === 'en' ? 'en-US' : 'ru-RU', {
                         month: 'short',
@@ -102,7 +119,7 @@ function CommentsThread({
                     ×
                   </button>
                 ) : null}
-              </li>
+              </motion.li>
             )
           })}
         </ul>
@@ -150,6 +167,7 @@ export function PostComments({
   onOpenChange: (open: boolean) => void
 }) {
   const s = useSession()
+  const reduceMotion = useReducedMotion()
   const n = post.commentsCount ?? 0
   const [items, setItems] = useState<PostComment[]>([])
   const [loading, setLoading] = useState(false)
@@ -229,11 +247,21 @@ export function PostComments({
 
   return (
     <div className="post-comments" onClick={(e) => e.stopPropagation()}>
-      {open ? (
-        <div className="post-comments__panel post-comments__panel--open">
-          <CommentsThread {...panelArgs} />
-        </div>
-      ) : null}
+      <AnimatePresence initial={false}>
+        {open ? (
+          <motion.div
+            key="comments-panel"
+            className="post-comments__panel post-comments__panel--open"
+            initial={reduceMotion ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={reduceMotion ? undefined : { opacity: 0 }}
+            transition={{ duration: 0.24, ease: smoothEase }}
+            style={{ marginTop: 12 }}
+          >
+            <CommentsThread {...panelArgs} />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   )
 }

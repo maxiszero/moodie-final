@@ -27,29 +27,28 @@ export function absoluteAssetUrl(path: string): string {
   }
 }
 
-/** Canonical URL for the current page (hash included for HashRouter). */
+/** Canonical URL for the current page. */
 export function getCurrentCanonicalHref(): string {
   if (typeof window === 'undefined') return ''
-  return window.location.href.split('?')[0]
+  return window.location.href.split('#')[0].split('?')[0]
 }
 
 /** Crawler-friendly share URL for a post (OG HTML on /share/post/:id). */
 export function sharePostUrl(postId: string): string {
   const origin = getPublicSiteOrigin()
-  if (!origin) return `${window.location.origin}${window.location.pathname}#/profile/?post=${encodeURIComponent(postId)}`
+  if (!origin) return `${window.location.origin}/profile/?post=${encodeURIComponent(postId)}`
   return `${origin}/share/post/${encodeURIComponent(postId)}`
 }
 
 /** Crawler-friendly share URL for a profile. */
 export function shareProfileUrl(username: string): string {
   const origin = getPublicSiteOrigin()
-  const hash = `#/profile/${encodeURIComponent(username)}`
-  if (!origin) return `${window.location.origin}${window.location.pathname}${hash}`
+  if (!origin) return `${window.location.origin}/profile/${encodeURIComponent(username)}`
   return `${origin}/share/profile/${encodeURIComponent(username)}`
 }
 
-/** In-app deep link (hash route). */
+/** In-app deep link to a profile post. */
 export function profilePostDeepLink(username: string, postId: string): string {
-  const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : ''
-  return `${base}#/profile/${encodeURIComponent(username)}?post=${encodeURIComponent(postId)}`
+  const base = typeof window !== 'undefined' ? window.location.origin : ''
+  return `${base}/profile/${encodeURIComponent(username)}?post=${encodeURIComponent(postId)}`
 }

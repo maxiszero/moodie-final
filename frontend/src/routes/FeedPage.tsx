@@ -1,12 +1,15 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
 import { API_URL } from '../config/apiUrl'
 import { useSession } from '../state/SessionContext'
 import type { DailyQuestionToday, Post } from '../types'
 import { useRealtime } from '../realtime/RealtimeContext'
 import { PostCard } from '../components/PostCard'
+import { FeedTabs, type FeedSort } from '../components/FeedTabs'
+import { FeedPostSkeletonList } from '../components/ui/Skeleton'
+import { smoothEase } from '../ui/motion'
 import { DailyQuestionFeed } from '../components/DailyQuestionFeed'
 import { MoodStatsPanel } from '../components/MoodStatsPanel'
 import { MoodWeekWidget } from '../components/MoodWeekWidget'
@@ -37,13 +40,15 @@ type FeedPageProps = { guestLenta?: boolean }
 export function FeedPage({ guestLenta }: FeedPageProps) {
   const s = useSession()
   const loc = useLocation()
+  const nav = useNavigate()
   const rt = useRealtime()
   const { showToast } = useToast()
   const { emotionFilter, setEmotionFilter, stats, refetchStats } = useFeedMood()
 
   const [posts, setPosts] = useState<Post[]>([])
   const [activeCommentsPostId, setActiveCommentsPostId] = useState<string | null>(null)
-  const [sort, setSort] = useState<'latest' | 'trending' | 'daily' | 'following' | 'for_you'>('latest')
+  const [sort, setSort] = useState<FeedSort>('latest')
+  const reduceMotion = useReducedMotion()
   const [hasFollowing, setHasFollowing] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(false)
   const [hasMore, setHasMore] = useState(true)
@@ -438,8 +443,7 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
             cursor: 'pointer',
           }}
           onClick={() => {
-            window.location.hash = '#/'
-            window.location.reload()
+            nav('/')
           }}
         />
       ) : null}
@@ -592,63 +596,7 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
         <MoodStatsPanel />
       </div>
 
-      <div className="feed-tabs feed-tabs--scroll" role="tablist" aria-label={t('feed_tabs_label')}>
-        <button
-          type="button"
-          className={`feed-tab ${sort === 'latest' ? 'active' : ''}`}
-          data-sort="latest"
-          role="tab"
-          aria-selected={sort === 'latest'}
-          id="tabLatest"
-          onClick={() => setSort('latest')}
-        >
-          {t('tab_feed')}
-        </button>
-        <button
-          type="button"
-          className={`feed-tab ${sort === 'trending' ? 'active' : ''}`}
-          data-sort="trending"
-          role="tab"
-          aria-selected={sort === 'trending'}
-          id="tabTop"
-          onClick={() => setSort('trending')}
-        >
-          {t('tab_top')}
-        </button>
-        <button
-          type="button"
-          className={`feed-tab ${sort === 'following' ? 'active' : ''}`}
-          data-sort="following"
-          role="tab"
-          aria-selected={sort === 'following'}
-          id="tabFollowing"
-          onClick={() => setSort('following')}
-        >
-          {t('tab_following')}
-        </button>
-        <button
-          type="button"
-          className={`feed-tab ${sort === 'for_you' ? 'active' : ''}`}
-          data-sort="for_you"
-          role="tab"
-          aria-selected={sort === 'for_you'}
-          id="tabForYou"
-          onClick={() => setSort('for_you')}
-        >
-          {t('tab_for_you')}
-        </button>
-        <button
-          type="button"
-          className={`feed-tab ${sort === 'daily' ? 'active' : ''}`}
-          data-sort="daily"
-          role="tab"
-          aria-selected={sort === 'daily'}
-          id="tabDaily"
-          onClick={() => setSort('daily')}
-        >
-          {t('tab_daily')}
-        </button>
-      </div>
+      <FeedTabs sort={sort} onSort={setSort} />
 
       {!guestLenta && sort !== 'daily' && sort !== 'following' && sort !== 'for_you' ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '10px 0 6px' }}>
@@ -669,9 +617,7 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
         </div>
       ) : null}
 
-      <div id="loader" className={`loader ${showFeedLoader ? '' : 'hidden'}`}>
-        {t('loading_posts')}
-      </div>
+      {showFeedLoader && sort !== 'daily' ? <FeedPostSkeletonList count={3} /> : null}
 
       <div id="moodFilters" className={`mood-filters ${sort === 'daily' || sort === 'following' || sort === 'for_you' ? 'hidden' : ''}`}>
         {stats.length > 0 ? (
@@ -828,10 +774,25 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
       ) : null}
 
       <div className="feed" id="feedContainer">
-        {sort === 'daily' ? (
-          <DailyQuestionFeed today={dqToday} onTodayUpdate={(next) => setDqToday(next)} />
-        ) : (
-          <>
+        <AnimatePresence mode="popLayout" initial={false}>
+          {sort === 'daily' ? (
+            <motion.div
+              key="daily"
+              initial={reduceMotion ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={reduceMotion ? undefined : { opacity: 0 }}
+              transition={{ duration: 0.22, ease: smoothEase }}
+            >
+              <DailyQuestionFeed today={dqToday} onTodayUpdate={(next) => setDqToday(next)} />
+            </motion.div>
+          ) : (
+            <motion.div
+              key={sort}
+              initial={reduceMotion ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={reduceMotion ? undefined : { opacity: 0 }}
+              transition={{ duration: 0.2, ease: smoothEase }}
+            >
             {initialError ? (
               <div className="error-message text-center" style={{ whiteSpace: 'pre-wrap' }}>
                 {initialError}
@@ -868,10 +829,11 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
                 )}
               </div>
             ) : null}
-            {posts.map((p) => (
+            {posts.map((p, index) => (
               <PostCard
                 key={p._id}
                 post={p}
+                enterDelay={Math.min(index, 8) * 0.045}
                 onPostUpdated={(next) => setPosts((prev) => prev.map((x) => (x._id === next._id ? next : x)))}
                 onDeleted={(id) => setPosts((prev) => prev.filter((x) => x._id !== id))}
                 commentsOpen={activeCommentsPostId === p._id}
@@ -887,11 +849,10 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
             {posts.length > 0 && hasMore ? (
               <div ref={loadMoreRef} className="feed-load-sentinel" aria-hidden />
             ) : null}
-            {loading && posts.length > 0 ? (
-              <div className="loader feed-load-more">{t('loading_posts')}</div>
-            ) : null}
-          </>
-        )}
+            {loading && posts.length > 0 ? <FeedPostSkeletonList count={1} /> : null}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </>
   )

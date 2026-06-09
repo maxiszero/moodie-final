@@ -1,10 +1,11 @@
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { apiFetch } from '../api/apiClient'
 import { useSession } from '../state/SessionContext'
 import type {
   AchievementBadge,
   DailyQuestionHistoryItem,
+  EveningReviewHistoryItem,
   MoodGradientMode,
   MoodHeatmapDay,
   MoodSong,
@@ -13,7 +14,9 @@ import type {
   Theme,
 } from '../types'
 import { PostCard } from '../components/PostCard'
+import { ProfileSkeleton } from '../components/ui/Skeleton'
 import { t, getLang } from '../i18n/i18n'
+import { followersStatLabel, followingStatLabel, likesStatLabel, postsStatLabel } from '../i18n/plural'
 import { setGettingStartedTaskDone } from '../ui/gettingStarted'
 import { moodBannerLinearGradient, moodLinearGradient135 } from '../ui/moodGradientStyle'
 import { streakLabel } from '../ui/streakLabel'
@@ -87,12 +90,12 @@ function userListRows(users: PublicUser[], moodGradientMode: MoodGradientMode, t
         const gradient = moodLinearGradient135(c1, c2, c3, moodGradientMode, theme)
         const emoji = u.currentEmoji || '😐'
         return (
-          <a key={u._id} className="user-list-row" href={`#/profile/${encodeURIComponent(u.username)}`}>
+          <Link key={u._id} className="user-list-row" to={`/profile/${encodeURIComponent(u.username)}`}>
             <div className="user-circle user-circle--sm" style={{ background: gradient }}>
               {emoji}
             </div>
             <span className="user-list-name">@{u.username}</span>
-          </a>
+          </Link>
         )
       })}
     </>
@@ -190,6 +193,7 @@ export function ProfilePage() {
   const [following, setFollowing] = useState<PublicUser[]>([])
   const [heatmap, setHeatmap] = useState<MoodHeatmapDay[]>([])
   const [dailyHistory, setDailyHistory] = useState<DailyQuestionHistoryItem[]>([])
+  const [eveningHistory, setEveningHistory] = useState<EveningReviewHistoryItem[]>([])
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const [heatmapSelection, setHeatmapSelection] = useState<{ dateStr: string; day: MoodHeatmapDay } | null>(null)
@@ -240,13 +244,17 @@ export function ProfilePage() {
       isOwnProfile
         ? apiFetch<{ answers: DailyQuestionHistoryItem[] }>('/daily-question/me/history?limit=7')
         : Promise.resolve({ answers: [] }),
+      isOwnProfile
+        ? apiFetch<{ reviews: EveningReviewHistoryItem[] }>('/evening-review/me/history?limit=7')
+        : Promise.resolve({ reviews: [] }),
     ])
-      .then(([main, fol, ing, hm, history]) => {
+      .then(([main, fol, ing, hm, history, evening]) => {
         setPayload(main)
         setFollowers(fol || [])
         setFollowing(ing || [])
         setHeatmap(hm || [])
         setDailyHistory(history.answers || [])
+        setEveningHistory(evening.reviews || [])
       })
       .catch((e: { message?: string }) => setErr(e?.message || t('profile_load_error')))
       .finally(() => setBusy(false))
@@ -400,7 +408,7 @@ export function ProfilePage() {
         <div className="profile-stats">
           <div className="profile-stat">
             <div className="profile-stat-value">{payload.posts.length}</div>
-            <div className="profile-stat-label">{t('posts_word')}</div>
+            <div className="profile-stat-label">{postsStatLabel(payload.posts.length)}</div>
           </div>
           <button
             type="button"
@@ -409,7 +417,7 @@ export function ProfilePage() {
             aria-haspopup="dialog"
           >
             <div className="profile-stat-value">{payload.followersCount}</div>
-            <div className="profile-stat-label">{t('followers')}</div>
+            <div className="profile-stat-label">{followersStatLabel(payload.followersCount)}</div>
           </button>
           <button
             type="button"
@@ -418,11 +426,11 @@ export function ProfilePage() {
             aria-haspopup="dialog"
           >
             <div className="profile-stat-value">{payload.followingCount}</div>
-            <div className="profile-stat-label">{t('following')}</div>
+            <div className="profile-stat-label">{followingStatLabel(payload.followingCount)}</div>
           </button>
           <div className="profile-stat">
             <div className="profile-stat-value">{payload.totalLikesReceived}</div>
-            <div className="profile-stat-label">{t('likes_on_posts')}</div>
+            <div className="profile-stat-label">{likesStatLabel(payload.totalLikesReceived)}</div>
           </div>
         </div>
         {showFollow ? (
@@ -454,7 +462,7 @@ export function ProfilePage() {
         </div>
       </div>
     )
-  }, [payload, s.isAuthed, s.username, s.moodGradientMode, s.theme, openFollowersModal, openFollowingModal])
+  }, [payload, s.isAuthed, s.username, s.moodGradientMode, s.theme, openFollowersModal, openFollowingModal, showToast])
 
   return (
     <div id="profileView">
@@ -463,9 +471,7 @@ export function ProfilePage() {
           {t('back')}
         </button>
       </div>
-      <div id="profileLoader" className={`loader ${busy ? '' : 'hidden'}`}>
-        {t('loading_posts')}
-      </div>
+      {busy ? <ProfileSkeleton /> : null}
       <div id="profileContent" className={busy ? 'hidden' : ''}>
         {err ? <p className="error-message text-center">{err}</p> : null}
         {payload && !err ? (
@@ -486,6 +492,23 @@ export function ProfilePage() {
                   </div>
                 ) : (
                   <p className="daily-history-card__empty">{t('daily_history_empty')}</p>
+                )}
+              </section>
+            ) : null}
+            {isOwnProfile ? (
+              <section className="daily-history-card evening-history-card">
+                <div className="daily-history-card__title">{t('evening_history_title')}</div>
+                {eveningHistory.length ? (
+                  <div className="daily-history-card__list">
+                    {eveningHistory.map((item) => (
+                      <article key={item.dayKey} className="daily-history-card__item">
+                        <div className="daily-history-card__date">{item.dayKey}</div>
+                        <p className="daily-history-card__answer">{item.choiceLabel}</p>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="daily-history-card__empty">{t('evening_history_empty')}</p>
                 )}
               </section>
             ) : null}

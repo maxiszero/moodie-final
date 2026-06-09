@@ -1,7 +1,6 @@
-from fastapi.testclient import TestClient
 from datetime import datetime, timezone
 
-from app.main import create_app
+from fastapi.testclient import TestClient
 from app.services.ai import WeeklyPost, estimate_feed_quality, fallback_analysis, weekly_summary_fallback
 from app.services.mood_song import normalize_emotion, query_for_mood, song_payload, MoodSong
 from app.services.telegram_webapp import validate_webapp_init_data
@@ -16,18 +15,26 @@ def test_telegram_init_data_rejects_garbage() -> None:
     raise AssertionError("expected ValueError")
 
 
-def test_health() -> None:
-    client = TestClient(create_app())
-
+def test_health(client: TestClient) -> None:
     response = client.get("/health")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    body = response.json()
+    assert body.get("status") == "ok"
+    assert body.get("database") == "ok"
 
 
-def test_register_validation_runs_before_database() -> None:
-    client = TestClient(create_app())
+def test_evening_review_requires_auth(client: TestClient) -> None:
+    assert client.get("/api/evening-review/today").status_code == 401
 
+
+def test_daily_question_history_requires_auth(client: TestClient) -> None:
+    response = client.get("/api/daily-question/me/history")
+
+    assert response.status_code == 401
+
+
+def test_register_validation_runs_before_database(client: TestClient) -> None:
     response = client.post("/api/auth/register", json={"username": "ab", "password": "123456"})
 
     assert response.status_code == 400
@@ -83,18 +90,14 @@ def test_mood_song_payload_uses_profile_field_names() -> None:
     assert payload["moodSongPreviewUrl"].endswith(".m4a")
 
 
-def test_mood_suggest_requires_text() -> None:
-    client = TestClient(create_app())
-
+def test_mood_suggest_requires_text(client: TestClient) -> None:
     r = client.post("/api/mood-song/suggest", json={"text": "  "})
 
     assert r.status_code == 400
     assert r.json().get("message") == "Text required"
 
 
-def test_mood_suggest_rejects_links() -> None:
-    client = TestClient(create_app())
-
+def test_mood_suggest_rejects_links(client: TestClient) -> None:
     r = client.post("/api/mood-song/suggest", json={"text": "see https://evil.test"})
 
     assert r.status_code == 400

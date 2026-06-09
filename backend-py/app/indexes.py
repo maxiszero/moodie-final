@@ -13,6 +13,7 @@ async def ensure_indexes() -> None:
     await db.posts.create_index([("userId", ASCENDING)])
     await db.posts.create_index([("emotion", ASCENDING)])
     await db.posts.create_index([("hidden", ASCENDING)])
+    await db.posts.create_index([("text", "text")], default_language="none")
     await db.posts.create_index([("createdAt", DESCENDING)])
     await db.posts.create_index([("likes", DESCENDING), ("createdAt", DESCENDING)])
     await db.posts.create_index([("feedSortScore", DESCENDING)])

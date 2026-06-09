@@ -23,13 +23,22 @@ function viteSeoDistFiles(): import('vite').Plugin {
       const sitemapHref = new URL('sitemap.xml', normalized).href
       const pageLoc = escapeXml(normalized)
       const robots = `User-agent: *\nAllow: /\n\nSitemap: ${sitemapHref}\n`
+      const staticPaths = ['', 'lenta', 'search', 'register', 'tests', 'settings']
+      const urls = staticPaths
+        .map((segment) => {
+          const loc = escapeXml(segment ? new URL(segment, normalized).href : pageLoc)
+          const priority = segment ? '0.7' : '1.0'
+          const changefreq = segment === 'lenta' ? 'hourly' : 'weekly'
+          return `  <url>
+    <loc>${loc}</loc>
+    <changefreq>${changefreq}</changefreq>
+    <priority>${priority}</priority>
+  </url>`
+        })
+        .join('\n')
       const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>${pageLoc}</loc>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
+${urls}
 </urlset>
 `
       fs.writeFileSync(path.join(dist, 'robots.txt'), robots, 'utf8')
@@ -44,32 +53,16 @@ export default defineConfig({
   server: {
     proxy: {
       '/socket.io': {
-        target: process.env.VITE_PYTHON_API_TARGET || 'http://localhost:8000',
+        target: process.env.VITE_API_TARGET || 'http://localhost:8000',
         changeOrigin: true,
         ws: true,
       },
-      '/api/auth': {
-        target: process.env.VITE_PYTHON_API_TARGET || 'http://localhost:8000',
-        changeOrigin: true,
-      },
-      '/api/posts': {
-        target: process.env.VITE_PYTHON_API_TARGET || 'http://localhost:8000',
-        changeOrigin: true,
-      },
-      '/api/users': {
-        target: process.env.VITE_PYTHON_API_TARGET || 'http://localhost:8000',
-        changeOrigin: true,
-      },
-      '/api/daily-question': {
-        target: process.env.VITE_PYTHON_API_TARGET || 'http://localhost:8000',
-        changeOrigin: true,
-      },
-      '/api/admin': {
-        target: process.env.VITE_PYTHON_API_TARGET || 'http://localhost:8000',
+      '/share': {
+        target: process.env.VITE_API_TARGET || 'http://localhost:8000',
         changeOrigin: true,
       },
       '/api': {
-        target: process.env.VITE_NODE_API_TARGET || 'http://localhost:5000',
+        target: process.env.VITE_API_TARGET || 'http://localhost:8000',
         changeOrigin: true,
       },
     },

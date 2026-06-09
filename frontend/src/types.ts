@@ -83,6 +83,14 @@ export type DailyQuestionHistoryItem = {
   updatedAt?: string
 }
 
+export type EveningReviewHistoryItem = {
+  dayKey: string
+  choice: string
+  choiceLabel: string
+  createdAt?: string
+  updatedAt?: string
+}
+
 export type AchievementBadge = {
   id: 'first_post' | 'seven_days' | 'supporter_10' | 'supported_5' | string
   level?: 'bronze' | 'silver' | 'gold' | string
@@ -124,6 +132,8 @@ export type Post = {
   reactions?: PostReaction[]
   isFollowingAuthor?: boolean
   commentsCount?: number
+  reports?: number
+  hidden?: boolean
   moodSongTitle?: string
   moodSongArtist?: string
   moodSongPreviewUrl?: string

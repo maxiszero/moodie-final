@@ -196,7 +196,7 @@ export const HeaderSearch = forwardRef<HeaderSearchRef, HeaderSearchProps>(funct
                   <div className="header-search__section-title">{t('search_section_users')}</div>
                   <ul className="header-search__list">
                     {userResults.map((u) => {
-                      const href = `#/profile/${encodeURIComponent(u.username)}`
+                      const href = `/profile/${encodeURIComponent(u.username)}`
                       const pal = ONBOARDING_EMOTION_CARDS.find(
                         (c) => c.emotion === String(u.currentEmotion || '').toLowerCase(),
                       )
@@ -234,7 +234,7 @@ export const HeaderSearch = forwardRef<HeaderSearchRef, HeaderSearchProps>(funct
                   <ul className="header-search__list">
                     {postResults.map((p) => {
                       const name = postAuthorName(p)
-                      const href = `#/profile/${encodeURIComponent(name)}?post=${encodeURIComponent(p._id)}`
+                      const href = `/profile/${encodeURIComponent(name)}?post=${encodeURIComponent(p._id)}`
                       return (
                         <li key={p._id} role="option">
                           <a

@@ -13,14 +13,23 @@ from fastapi.responses import JSONResponse
 from .config import settings
 from .db import close_client
 from .indexes import ensure_indexes
+from .db import get_database
+from .middleware.rate_limit import RateLimitMiddleware
+from .middleware.request_id import RequestIdMiddleware
+from .middleware.security_headers import SecurityHeadersMiddleware
 from .realtime import sio
-from .routers import admin, auth, daily_question, mood_neighbors, mood_song, posts, share, users
+from .routers import admin, auth, daily_question, evening_review_router, mood_neighbors, mood_song, posts, share, users
+from .security import require_jwt_secret
 from .services.daily_question import utc_day_key
 from .services.telegram_bot import start_telegram_background_tasks
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    secret = require_jwt_secret()
+    if settings.node_env == "production" and secret.lower() in {"change_me", "changeme", "secret", "jwt_secret"}:
+        raise RuntimeError("Set a strong JWT_SECRET in production")
+
     await ensure_indexes()
 
     async def daily_rollover_watch() -> None:
@@ -48,6 +57,9 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Moodie Python API", lifespan=lifespan)
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(RequestIdMiddleware)
+    app.add_middleware(RateLimitMiddleware)
 
     if settings.cors_origins:
         app.add_middleware(
@@ -74,12 +86,18 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     async def health() -> dict[str, str]:
-        return {"status": "ok"}
+        try:
+            db = get_database()
+            await db.command("ping")
+            return {"status": "ok", "database": "ok"}
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail={"status": "degraded", "database": "error"}) from exc
 
     app.include_router(auth.router, prefix="/api")
     app.include_router(posts.router, prefix="/api")
     app.include_router(users.router, prefix="/api")
     app.include_router(daily_question.router, prefix="/api")
+    app.include_router(evening_review_router.router, prefix="/api")
     app.include_router(mood_song.router, prefix="/api")
     app.include_router(mood_neighbors.router, prefix="/api")
     app.include_router(admin.router, prefix="/api")

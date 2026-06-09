@@ -10,14 +10,10 @@ import {
 } from '../ui/gettingStarted'
 import { t } from '../i18n/i18n'
 import { GettingStartedTaskIcon } from './GettingStartedTaskIcon'
-import { GettingStarted1fitPromo } from './GettingStarted1fitPromo'
-import { getFitRewardUrl } from '../config/fitRewardUrl'
 
 export function GettingStartedModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const reduceMotion = useReducedMotion()
   const [progress, setProgress] = useState<GettingStartedProgress>(() => loadGettingStartedProgress())
-  const [rewardClaimed, setRewardClaimed] = useState(() => Boolean(localStorage.getItem(storageKeys.gettingStartedRewardClaimed)))
-
   useEffect(() => {
     if (!open) return
     const id = window.setInterval(() => setProgress(loadGettingStartedProgress()), 400)
@@ -57,8 +53,6 @@ export function GettingStartedModal({ open, onClose }: { open: boolean; onClose:
           {t('gs_modal_intro')} {progressLabel}
         </p>
 
-        <GettingStarted1fitPromo />
-
         <div style={{ display: 'grid', gap: 10, marginTop: 16 }}>
           <TaskRow ok={progress.first_post} title={t('gs_task_first_post')} hint={t('gs_task_hint_first_post')} index={0} />
           <TaskRow ok={progress.first_reaction} title={t('gs_task_reaction')} hint={t('gs_task_hint_reaction')} index={1} />
@@ -67,35 +61,18 @@ export function GettingStartedModal({ open, onClose }: { open: boolean; onClose:
         </div>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
-          {complete && !rewardClaimed ? (
-            <button
-              type="button"
-              className="welcome-btn"
-              onClick={() => {
-                localStorage.setItem(storageKeys.gettingStartedSeen, 'true')
-                localStorage.removeItem(storageKeys.justRegistered)
-                localStorage.setItem(storageKeys.gettingStartedRewardClaimed, 'true')
-                setRewardClaimed(true)
-                window.location.href = getFitRewardUrl()
-              }}
-              style={{ flex: 1 }}
-            >
-              {t('gs_reward')}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="welcome-btn"
-              onClick={() => {
-                localStorage.setItem(storageKeys.gettingStartedSeen, 'true')
-                localStorage.removeItem(storageKeys.justRegistered)
-                onClose()
-              }}
-              style={{ flex: 1 }}
-            >
-              {t('gs_continue')}
-            </button>
-          )}
+          <button
+            type="button"
+            className="welcome-btn"
+            onClick={() => {
+              localStorage.setItem(storageKeys.gettingStartedSeen, 'true')
+              localStorage.removeItem(storageKeys.justRegistered)
+              onClose()
+            }}
+            style={{ flex: 1 }}
+          >
+            {complete ? t('gs_complete') : t('gs_continue')}
+          </button>
           {!complete ? (
             <button
               type="button"

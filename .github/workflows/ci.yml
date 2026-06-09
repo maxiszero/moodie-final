@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+    env:
+      CI: true
+      JWT_SECRET: ci-test-secret
+      MONGODB_URI: mongodb://127.0.0.1:27017/moodie_test
+      TELEGRAM_ENABLE_POLLING: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend-py/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          pip install -r backend-py/requirements.txt
+
+      - name: Python tests
+        run: python -m pytest backend-py -q
+
+      - name: Frontend lint
+        run: npm run lint
+
+      - name: Frontend build
+        run: npm run build --workspace frontend
+
+      - name: Frontend unit tests
+        run: npm run test:run --workspace frontend
+
+      - name: Install Playwright browser
+        run: npx playwright install chromium --with-deps
+
+      - name: E2E tests
+        env:
+          MONGODB_URI: mongodb://127.0.0.1:27017/moodie_e2e
+        run: npm run test:e2e

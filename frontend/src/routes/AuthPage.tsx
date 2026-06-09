@@ -155,7 +155,7 @@ export function AuthPage() {
 
         <div className="text-center auth-switch">
           {t('no_account')}{' '}
-          <a id="showRegisterBtn" href="#/register" onClick={(e) => { e.preventDefault(); setMode('register') }}>
+          <a id="showRegisterBtn" href="/register" onClick={(e) => { e.preventDefault(); setMode('register') }}>
             {t('signup')}
           </a>
         </div>
@@ -237,7 +237,7 @@ export function AuthPage() {
 
         <div className="text-center auth-switch">
           {t('have_account')}{' '}
-          <a id="showLoginBtn" href="#/" onClick={(e) => { e.preventDefault(); setMode('login') }}>
+          <a id="showLoginBtn" href="/" onClick={(e) => { e.preventDefault(); setMode('login') }}>
             {t('login_link')}
           </a>
         </div>

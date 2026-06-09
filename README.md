@@ -1,207 +1,181 @@
 # Moodie
 
-**Moodie** — соцсеть про настроения: короткие посты с эмоцией, реакции и комментарии, вопрос дня, подписки, профили, лёгкие тесты самопознания, Telegram Mini App и бот. Есть ИИ‑разбор настроения, подсказки и **экспорт/импорт пользовательских настроек в CSV** (Python API) для бэкапа и учебных требований к файловому I/O.
+**Moodie** is a mood-centered social network: short posts with emotion and color, empathetic reactions, comments, profiles, daily questions, self-discovery tests, and a **Telegram Mini App** with a companion bot. Text posts are analyzed for mood (AI with local fallback), and user settings can be exported and imported as CSV.
+
+**Live:** [moodie.social](https://moodie.social)
+
+---
 
 ## Features
 
-- **Лента** — посты с палитрой по эмоции, реакции, комментарии, фильтр по настроению, смешение «под моё настроение»
-- **Профиль** — аватар с градиентом настроения, сводка ИИ за неделю, песня настроения (preview), достижения
-- **Вопрос дня** — общий вопрос по «корзине» настроения, анонимные ответы
-- **Тесты** — опросник эмоций, короткий MBTI (локальные результаты)
-- **Настройки** — язык (ru/en), тема, стиль градиентов настроения, пароль, уведомления (в т.ч. Telegram)
-- **Telegram** — вход/привязка, Mini App, напоминания (в Python API)
-- **Админка** — базовые операции для роли admin
-- **CSV настроек** (FastAPI) — `GET` экспорт и `POST` импорт — см. раздел [Python API (backend-py)](#python-api-backend-py)
+- **Feed** — mood-colored posts, reactions, comments, sort modes (latest, trending, following, for you), mood filter, mood-mix mode, infinite scroll
+- **Profile** — mood gradient banner, weekly AI summary, mood song with preview, achievements, activity streak, mood heatmap calendar
+- **Daily question** — shared question per mood bucket, anonymous answers, day rollover via WebSocket
+- **Tests** — emotion questionnaire, short MBTI, stress test; history stored in the browser
+- **Settings** — language (RU/EN), theme, mood gradient style, password, blocked users, Telegram notification preferences
+- **Telegram** — WebApp login, account linking, bot commands, daily and evening reminders, activity alerts
+- **Sharing** — Open Graph previews for profiles and posts
+- **Admin** — user ban, post moderation
+- **Settings CSV** — export/import user preferences via the Python API (`GET` / `POST` on `/api/users/me/settings/export` and `/import`)
 
-## Tech stack
+---
 
-| Layer | Technologies |
-|--------|----------------|
-| Frontend | React 19, TypeScript, Vite, React Router, Framer Motion, Socket.IO client |
-| API (primary in many setups) | Node.js, Express, TypeScript, Mongoose, Socket.IO, JWT |
-| API (alternate / full Python) | **FastAPI**, Motor (async MongoDB), python-socketio, Pydantic |
-| Mood microservice | **FastAPI** (`python-service`) — анализ текста и подсказки (`/analyze`, `/tip`) |
-| Data | MongoDB |
-| AI | Groq / fallback-анализатор; опционально другие ключи из `.env` |
-| Tests | Vitest (frontend), Vitest + Supertest (backend), **pytest** (backend-py) |
+## Technologies
+
+| Layer | Stack |
+|-------|--------|
+| **Frontend** | React 19, TypeScript, Vite, React Router, Framer Motion, Socket.IO client |
+| **API** | FastAPI (`backend-py`), Motor (async MongoDB), Pydantic, python-socketio, JWT |
+| **Legacy** | `backend/` (Express) and `python-service/` — deprecated; not used in dev/prod |
+| **Mood analysis** | In-process in `backend-py` (`ai.py`) — Groq/Gemini with rule-based fallback |
+| **Database** | MongoDB |
+| **Integrations** | Telegram Bot API, iTunes Search (mood songs) |
+| **Testing** | Vitest (frontend), pytest (Python API), Playwright (E2E smoke) |
+
+---
 
 ## Requirements
 
 - **Node.js** 20+
 - **npm** 10+
 - **Python** 3.10+
-- **MongoDB** (локально или Atlas)
+- **MongoDB** (local or Atlas)
 
-## Quick start
+---
 
-### 1. Clone and install (monorepo root)
+## Installation
+
+### 1. Clone and install dependencies
 
 ```bash
-git clone <your-repo-url> moodie
+git clone https://github.com/maxiszero/moodie-final.git moodie
 cd moodie
 npm install
 ```
 
-### 2. Environment
+### 2. Environment variables
 
-**Node backend** — создай `backend/.env` (см. пример в документации ниже или в репозитории). Минимум:
+**API (Python)** — copy `backend-py/.env.example` to `backend-py/.env` and set `MONGODB_URI`, `JWT_SECRET`, `CORS_ORIGIN`, and optionally AI keys (`AI_API_KEY`, `GEMINI_API_KEY`) and Telegram (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEB_APP_URL`).
 
-```env
-PORT=5000
-MONGODB_URI=mongodb://127.0.0.1:27017/moodie
-JWT_SECRET=use-a-long-random-secret
-CORS_ORIGIN=http://localhost:5173
-PYTHON_MOOD_SERVICE_URL=http://127.0.0.1:8000
-```
+> `backend/` (Node) and `python-service/` are **legacy** and no longer required for dev or production. The FastAPI app in `backend-py/` is the single backend.
 
-**Python full API** (опционально) — скопируй `backend-py/.env.example` в `backend-py/.env` и заполни `MONGODB_URI`, `JWT_SECRET`, при необходимости `CORS_ORIGIN`, ключи ИИ и Telegram.
-
-**Mood microservice** — в `python-service/` создай venv и `pip install -r requirements.txt`; переменные по необходимости (Groq и т.д.).
-
-### 3. Python dependencies (microservice + API tests)
+**Python API dependencies:**
 
 ```bash
-cd python-service
-python -m venv .venv
-# Windows:
-.venv\Scripts\activate
-# macOS/Linux:
-# source .venv/bin/activate
-python -m pip install -r requirements.txt
-cd ..
-
 cd backend-py
-python -m pip install -r requirements.txt
+pip install -r requirements.txt
 cd ..
 ```
 
-### 4. Development
+---
 
-**Frontend + Node API + Python microservice** (как в `npm run dev` — параллельно три процесса):
+## How to run
+
+### Development (recommended)
+
+Starts the frontend and FastAPI API together:
 
 ```bash
 npm run dev
 ```
 
-Отдельно:
-
-```bash
-npm run dev:frontend      # Vite → http://localhost:5173
-npm run dev:backend       # Express API (порт из backend/.env)
-npm run dev:python        # backend-py FastAPI на :8000 (--app-dir backend-py)
-npm run dev:python-backend
-```
-
-**Порты по умолчанию**
-
 | Service | URL |
 |---------|-----|
 | Frontend | http://localhost:5173 |
-| Node API | http://localhost:5000 |
-| FastAPI full stack (`backend-py`) | http://127.0.0.1:8000 |
-| Mood microservice (`python-service`) | http://127.0.0.1:8000 — **не запускай одновременно с `dev:python-backend` на том же порту** |
+| FastAPI (`backend-py`) | http://127.0.0.1:8000 |
+| OpenAPI docs | http://127.0.0.1:8000/docs |
 
-В `package.json` корневой скрипт `dev` поднимает **backend-py на 8000** и отдельно Node. Microservice для Express обычно настраивают на **другой порт** (например `8001`) через отдельную команду uvicorn, либо в деве используют только fallback анализа в Node без microservice. Под свой сценарий поправь `PYTHON_MOOD_SERVICE_URL` и порты.
+Run services separately if needed:
 
-### 5. Production build
+```bash
+npm run dev:frontend   # Vite
+npm run dev:backend    # FastAPI (uvicorn)
+```
+
+### Production build
 
 ```bash
 npm run build
-npm run start --workspace backend
+npm run start
 ```
 
-Статическая раздача фронта — из `frontend/dist` (nginx, CDN или хостинг).
+Serve `frontend/dist` with nginx or any static host. Proxy `/api`, `/socket.io`, and `/share` to the FastAPI process (`backend-py`, default port 8000). Example config: [`deploy/nginx.conf`](deploy/nginx.conf). Step-by-step production update (RU): [`deploy/DEPLOY.md`](deploy/DEPLOY.md).
 
-## Checks
+### Health checks
 
 ```bash
-npm run build              # backend + frontend
-npm run test               # Node backend tests + frontend unit tests
-npm run test:python        # pytest в backend-py (CSV, AI helpers, health, …)
-npm run lint               # frontend ESLint
+curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/
 ```
 
-Отдельно по воркспейсам:
+### Tests and lint
 
 ```bash
-npm run build --workspace backend
-npm run build --workspace frontend
-npm run test --workspace backend
-npm run test:run --workspace frontend
+npm run build
+npm run test
+npm run test:python
+npm run test:e2e    # needs MongoDB + Playwright (npx playwright install chromium)
+npm run lint
 ```
 
-## Python API (`backend-py`)
+### Telegram Mini App setup
 
-Отдельное приложение **FastAPI** с тем же MongoDB и JWT, что и Node-вариант (см. `backend-py/.env.example`).
-
-- Запуск: `npm run dev:python-backend` или из каталога `backend-py`:  
-  `python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000`
-- Health: `GET http://127.0.0.1:8000/health`
-
-### Settings CSV (экспорт / импорт)
-
-Требует заголовок `Authorization: Bearer <JWT>` после логина через этот же API.
-
-| Method | Path | Описание |
-|--------|------|----------|
-| `GET` | `/api/users/me/settings/export` | Скачать `moodie_settings.csv` (UTF-8): язык, тема, флаги Telegram-уведомлений |
-| `POST` | `/api/users/me/settings/import` | `multipart/form-data`, поле `file` — `.csv` в том же формате |
-
-Логика разбора и записи — модуль `backend-py/app/services/settings_csv.py` (модуль `csv` из стандартной библиотеки). Подробнее о палитре эмоций: `docs/PALETTE.md`.
-
-### Другие Python части
-
-- **`python-service/`** — лёгкий сервис анализа настроения для Node (`PYTHON_MOOD_SERVICE_URL`).
-- Миграция палитры в Mongo (опционально): из `backend/` — `npm run migrate:emotion-palette` (см. `backend/package.json`).
-
-## Telegram Mini App
-
-Не коммить токен бота. Если токен засветился — `/revoke` в BotFather и новый токен только в env.
-
-Нужны: бот, HTTPS URL фронта, доступный бэкенд (`CORS_ORIGIN`). Настройка кнопки меню:
+Requires a bot token, HTTPS frontend URL, and matching `CORS_ORIGIN`. Never commit tokens to git.
 
 ```bash
-set TELEGRAM_BOT_TOKEN=...
+# Windows CMD
+set TELEGRAM_BOT_TOKEN=your-token
 set TELEGRAM_WEB_APP_URL=https://your-domain.com
 set TELEGRAM_BOT_SHORT_NAME=Moodie
 npm run telegram:setup
 ```
 
-PowerShell: `$env:TELEGRAM_BOT_TOKEN="..."` и т.д.
-
-## Project structure (overview)
-
-```text
-frontend/          React SPA
-backend/           Express + Mongoose API
-backend-py/        FastAPI + Motor API (optional full backend)
-python-service/    FastAPI mood analysis microservice
-docs/              PALETTE.md и прочая документация
-scripts/           setupTelegramBot.mjs
+```powershell
+# PowerShell
+$env:TELEGRAM_BOT_TOKEN="your-token"
+$env:TELEGRAM_WEB_APP_URL="https://your-domain.com"
+npm run telegram:setup
 ```
 
-## Screenshots
+---
 
-Добавьте в репозиторий папку `docs/screenshots/` (или в описание релиза) и вставьте сюда ссылки, например:
+## Project structure
 
-- Лента и карточка поста  
-- Профиль и баннер настроения  
-- Настройки / экспорт CSV (опционально)
+```text
+frontend/          React SPA (pages, components, i18n)
+backend-py/        FastAPI + Motor API, Telegram bot, CSV I/O
+backend/           legacy Express API (deprecated — do not run)
+python-service/    legacy mood microservice (deprecated)
+deploy/            nginx, PM2, DEPLOY.md, MONITORING.md, healthcheck.sh
+LEGACY.md          deprecated Node/python-service folders
+e2e/               Playwright smoke + happy-path tests
+.github/workflows/ CI (pytest, lint, build, E2E)
+docs/              PALETTE.md (emotion colors)
+scripts/           Telegram bot setup (setupTelegramBot.mjs)
+```
 
-## Team & roles
+Additional docs: [emotion palette](docs/PALETTE.md)
 
-| Role | Name | Responsibility (example) |
-|------|------|----------------------------|
-| … | … | Frontend, UI |
-| … | … | Node API, realtime |
-| … | … | Python API, AI, Telegram |
+---
 
-*Заполните таблицу под команду или укажите «индивидуальный проект».*
+## Production monitoring
 
-## Academic / integrity
+See [`deploy/MONITORING.md`](deploy/MONITORING.md) for health checks and optional Telegram alerts.
 
-Если учебное заведение требует декларацию использования ИИ — укажите в отчёте, какие части кода или текстов рецензировались вручную.
+---
+
+## Team roles
+
+| Role | Responsibilities |
+|------|------------------|
+| **Frontend** | React UI, routing, mobile layout, i18n (RU/EN), Telegram Mini App integration, Socket.IO client |
+| **Backend (Python)** | FastAPI routers, Pydantic validation, MongoDB access, CSV export/import, pytest, Socket.IO |
+| **Telegram & integrations** | Bot commands, schedulers, WebApp auth, notification settings |
+| **AI & mood services** | Emotion analysis, weekly summaries, mood song suggestions, fallback logic |
+| **DevOps** | Deployment, nginx, PM2, environment configuration, production monitoring |
+
+---
 
 ## License
 
-Укажите лицензию проекта при публикации (или проприетарно).
+Proprietary — all rights reserved unless a license file is added to the repository.

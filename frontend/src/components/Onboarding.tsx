@@ -453,7 +453,7 @@ export function Onboarding({ open, onDone }: { open: boolean; onDone: () => void
                   localStorage.setItem(storageKeys.onboardingColor2, dominant.color2)
                   localStorage.setItem(storageKeys.onboardingColor3, dominant.color3)
                   onDone()
-                  window.location.hash = '#/register'
+                  window.location.assign('/register')
                 }}
               >
                 Присоединиться к сообществу

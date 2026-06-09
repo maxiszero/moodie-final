@@ -12,7 +12,8 @@ from ..db import db_dependency
 from ..dependencies import current_user, optional_user
 from ..mongo import mongo_json, stringify_mongo
 from ..security import hash_password, verify_password
-from ..services.ai import WeeklyPost, weekly_summary_fallback
+from ..services.ai import WeeklyPost, summarize_weekly_mood, weekly_summary_fallback
+from ..services.notify import notify_follow
 from ..services.settings_csv import parse_csv_to_updates, row_to_csv_bytes, user_doc_to_row
 from ..services.telegram_bot import compute_activity_streak
 from .posts import populate_posts, projection_without_private
@@ -100,18 +101,16 @@ async def resolve_weekly_ai_summary(db: AsyncIOMotorDatabase, user: dict[str, An
         return cached.strip()
 
     lang = "en" if user.get("preferredLanguage") == "en" else "ru"
-    summary = weekly_summary_fallback(
-        [
-            WeeklyPost(
-                text=post.get("text") or "",
-                emotion=post.get("emotion"),
-                emoji=post.get("emoji"),
-                createdAt=post.get("createdAt"),
-            )
-            for post in week_posts
-        ],
-        lang,
-    )
+    weekly_posts = [
+        WeeklyPost(
+            text=post.get("text") or "",
+            emotion=post.get("emotion"),
+            emoji=post.get("emoji"),
+            createdAt=post.get("createdAt"),
+        )
+        for post in week_posts
+    ]
+    summary = await summarize_weekly_mood(weekly_posts, lang) or weekly_summary_fallback(weekly_posts, lang)
     await db.users.update_one(
         {"_id": user["_id"]},
         {"$set": {"weeklyAiSummary": summary, "weeklyAiSummaryAt": datetime.now(timezone.utc)}},
@@ -387,7 +386,7 @@ async def search_users(q: str = "", db: AsyncIOMotorDatabase = Depends(db_depend
         raise HTTPException(status_code=400, detail={"message": "Query too long"})
     users = await (
         db.users.find(
-            {"username": {"$regex": re.escape(raw), "$options": "i"}, "banned": {"$ne": True}},
+            {"username": {"$regex": f"^{re.escape(raw)}", "$options": "i"}, "banned": {"$ne": True}},
             PUBLIC_USER_FIELDS,
         )
         .sort("username", ASCENDING)
@@ -454,6 +453,7 @@ async def follow_user(
         {"_id": user["_id"]},
         {"$addToSet": {"following": target["_id"]}, "$set": {"updatedAt": datetime.now(timezone.utc)}},
     )
+    await notify_follow(db, user, target)
     followers_count = await db.users.count_documents({"following": target["_id"]})
     return {"message": "Followed", "isFollowing": True, "followersCount": followers_count}
 

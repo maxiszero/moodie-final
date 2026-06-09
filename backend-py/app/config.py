@@ -6,8 +6,9 @@ from dotenv import load_dotenv
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 
+# Single source: repo root .env (optional) then backend-py/.env (canonical).
+# Legacy backend/.env is intentionally not loaded — migrate vars to backend-py/.env.
 load_dotenv(ROOT_DIR / ".env")
-load_dotenv(ROOT_DIR / "backend" / ".env")
 load_dotenv(ROOT_DIR / "backend-py" / ".env", override=True)
 
 

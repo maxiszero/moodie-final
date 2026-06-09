@@ -24,7 +24,6 @@ export const storageKeys = {
   justRegistered: 'moodie_just_registered',
   gettingStartedSeen: 'moodie_getting_started_seen',
   gettingStartedProgress: 'moodie_getting_started_progress',
-  gettingStartedRewardClaimed: 'moodie_getting_started_reward_claimed',
   /** '1' if user wants browser notifications for the daily question */
   dailyNotifyEnabled: 'moodie_daily_notify_enabled',
   /** Last dayKey we showed a browser notification for (avoid duplicates) */

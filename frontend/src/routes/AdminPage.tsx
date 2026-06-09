@@ -36,15 +36,21 @@ export function AdminPage() {
   const nav = useNavigate()
   const [users, setUsers] = useState<AdminUserRow[]>([])
   const [posts, setPosts] = useState<Post[]>([])
+  const [reported, setReported] = useState<Post[]>([])
   const [err, setErr] = useState('')
 
   useEffect(() => {
     if (!s.isAuthed || s.role !== 'admin') return
     setErr('')
-    Promise.all([apiFetch<AdminUserRow[]>('/admin/users'), apiFetch<Post[]>('/admin/posts')])
-      .then(([u, p]) => {
+    Promise.all([
+      apiFetch<AdminUserRow[]>('/admin/users'),
+      apiFetch<Post[]>('/admin/posts'),
+      apiFetch<Post[]>('/admin/reported-posts'),
+    ])
+      .then(([u, p, r]) => {
         setUsers(u || [])
         setPosts(p || [])
+        setReported(r || [])
       })
       .catch((e: { message?: string }) => setErr(e?.message || 'Failed to load admin data'))
   }, [s.isAuthed, s.role])
@@ -109,6 +115,48 @@ export function AdminPage() {
                         }}
                       >
                         {u.banned ? t('admin_unban') : t('admin_ban')}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div className="admin-section">
+          <h2 id="adminReportedTitle">{t('admin_reported')}</h2>
+          <div className="admin-table-wrap">
+            <table className="admin-table admin-table--posts" id="adminReportedTable">
+              <thead>
+                <tr>
+                  <th>{t('admin_col_author')}</th>
+                  <th>{t('admin_col_text')}</th>
+                  <th>{t('admin_col_reports')}</th>
+                  <th>{t('admin_col_hidden')}</th>
+                  <th>{t('admin_col_action')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reported.map((p) => (
+                  <tr key={p._id}>
+                    <td>{postAuthorLabel(p.userId)}</td>
+                    <td className="admin-table__post-text">{p.text}</td>
+                    <td>{p.reports ?? 0}</td>
+                    <td>{p.hidden ? '✓' : '—'}</td>
+                    <td className="admin-table__cell--action">
+                      <button
+                        type="button"
+                        className="auth-btn admin-table__btn"
+                        onClick={async () => {
+                          const next = !p.hidden
+                          await apiFetch(`/admin/posts/${p._id}/hidden`, {
+                            method: 'PATCH',
+                            body: JSON.stringify({ hidden: next }),
+                          })
+                          setReported((prev) => prev.map((x) => (x._id === p._id ? { ...x, hidden: next } : x)))
+                        }}
+                      >
+                        {p.hidden ? t('admin_show_post') : t('admin_hide_post')}
                       </button>
                     </td>
                   </tr>

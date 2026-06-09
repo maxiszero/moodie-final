@@ -15,8 +15,6 @@ def get_client() -> AsyncIOMotorClient:
 
 
 def get_database() -> AsyncIOMotorDatabase:
-    # Mongoose uses the database from the URI path, or "test" when the URI has none.
-    # Keep the same fallback so the Python backend reads the existing data.
     return get_client().get_default_database(default=settings.mongodb_db_name or "test")
 
 

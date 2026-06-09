@@ -1,7 +1,6 @@
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { storageKeys } from '../config/storage'
 import {
   GETTING_STARTED_TASK_TOTAL,
   loadGettingStartedProgress,
@@ -11,8 +10,6 @@ import {
 } from '../ui/gettingStarted'
 import { t } from '../i18n/i18n'
 import { GettingStartedTaskIcon } from './GettingStartedTaskIcon'
-import { GettingStarted1fitPromo } from './GettingStarted1fitPromo'
-import { getFitRewardUrl } from '../config/fitRewardUrl'
 
 const TASK_COPY: Array<{ key: GettingStartedTaskId; i18n: string }> = [
   { key: 'first_post', i18n: 'gs_task_first_post' },
@@ -26,7 +23,6 @@ export function GettingStartedWidget({ compactLink = false }: { compactLink?: bo
   const reduceMotion = useReducedMotion()
   const [progress, setProgress] = useState<GettingStartedProgress>(() => loadGettingStartedProgress())
   const [collapsed, setCollapsed] = useState(false)
-  const [rewardClaimed, setRewardClaimed] = useState(() => Boolean(localStorage.getItem(storageKeys.gettingStartedRewardClaimed)))
   const dur = reduceMotion ? 0 : 0.35
   const stagger = reduceMotion ? 0 : 0.05
 
@@ -57,7 +53,6 @@ export function GettingStartedWidget({ compactLink = false }: { compactLink?: bo
           }
         }}
       >
-        <GettingStarted1fitPromo />
         <div className="gs-widget__meta">{progressLabel}</div>
       </section>
     )
@@ -73,8 +68,6 @@ export function GettingStartedWidget({ compactLink = false }: { compactLink?: bo
       </div>
 
       <div className="gs-widget__meta">{progressLabel}</div>
-
-      <GettingStarted1fitPromo />
 
       <AnimatePresence initial={false}>
         {!collapsed ? (
@@ -101,27 +94,9 @@ export function GettingStartedWidget({ compactLink = false }: { compactLink?: bo
         ) : null}
       </AnimatePresence>
 
-      {complete && !rewardClaimed ? (
-        <motion.button
-          type="button"
-          className="auth-btn"
-          style={{ width: '100%', marginTop: 12 }}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: reduceMotion ? 0 : 0.3, ease: [0.22, 1, 0.36, 1] }}
-          onClick={() => {
-            localStorage.setItem(storageKeys.gettingStartedSeen, 'true')
-            localStorage.removeItem(storageKeys.justRegistered)
-            localStorage.setItem(storageKeys.gettingStartedRewardClaimed, 'true')
-            setRewardClaimed(true)
-            window.location.href = getFitRewardUrl()
-          }}
-        >
-          {t('gs_reward')}
-        </motion.button>
-      ) : complete && rewardClaimed ? (
+      {complete ? (
         <div className="gs-widget__meta" style={{ marginTop: 12 }}>
-          {t('gs_reward_claimed')}
+          {t('gs_complete')}
         </div>
       ) : null}
     </section>
