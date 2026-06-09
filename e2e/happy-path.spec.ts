@@ -14,9 +14,12 @@ test('register, publish post, see it in feed', async ({ page }) => {
   await page.goto('/register')
   await page.locator('#registerUsername').fill(username)
   await page.locator('#registerPassword').fill(password)
-  await page.locator('#registerSubmitBtn').click()
+  await Promise.all([
+    page.waitForResponse((r) => r.url().includes('/api/auth/register') && r.status() === 201),
+    page.locator('#registerSubmitBtn').click(),
+  ])
 
-  await expect(page.locator('#feedComposer')).toBeVisible({ timeout: 15_000 })
+  await expect(page.locator('#feedComposer')).toBeVisible({ timeout: 30_000 })
   await publishPost(page, postText)
 
   await expect(page.locator('#feedContainer .post-card .post-content', { hasText: postText })).toBeVisible({

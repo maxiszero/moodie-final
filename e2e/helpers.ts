@@ -7,6 +7,7 @@ export async function skipOnboardingModals(page: Page) {
     localStorage.setItem('moodie_welcome_seen', '1')
     localStorage.setItem('moodie_tg_onboarding_seen', '1')
     localStorage.setItem('moodie_getting_started_seen', '1')
+    localStorage.setItem('moodie_onboarding_mood', 'neutral')
     localStorage.removeItem('moodie_just_registered')
   })
 }

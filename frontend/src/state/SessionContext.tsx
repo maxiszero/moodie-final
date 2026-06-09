@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { apiFetch, type ApiError } from '../api/apiClient'
 import {
   getStoredLang,
@@ -184,17 +185,19 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         auth: false,
       })
       const mood = applyAuthPayload(p)
-      setState((s) => ({
-        ...s,
-        token: p.token,
-        username: p.username,
-        userId: p._id,
-        role: p.role || 'user',
-        telegramLinked: Boolean(p.telegramLinked),
-        lang: (p.preferredLanguage as Lang) || s.lang,
-        theme: (p.preferredTheme as Theme) || s.theme,
-        mood,
-      }))
+      flushSync(() => {
+        setState((s) => ({
+          ...s,
+          token: p.token,
+          username: p.username,
+          userId: p._id,
+          role: p.role || 'user',
+          telegramLinked: Boolean(p.telegramLinked),
+          lang: (p.preferredLanguage as Lang) || s.lang,
+          theme: (p.preferredTheme as Theme) || s.theme,
+          mood,
+        }))
+      })
     } catch (e) {
       setLastAuthError(e as ApiError)
       throw e
@@ -224,17 +227,19 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         auth: false,
       })
       const mood = applyAuthPayload(p)
-      setState((s) => ({
-        ...s,
-        token: p.token,
-        username: p.username,
-        userId: p._id,
-        role: p.role || 'user',
-        telegramLinked: Boolean(p.telegramLinked),
-        lang: (p.preferredLanguage as Lang) || s.lang,
-        theme: (p.preferredTheme as Theme) || s.theme,
-        mood,
-      }))
+      flushSync(() => {
+        setState((s) => ({
+          ...s,
+          token: p.token,
+          username: p.username,
+          userId: p._id,
+          role: p.role || 'user',
+          telegramLinked: Boolean(p.telegramLinked),
+          lang: (p.preferredLanguage as Lang) || s.lang,
+          theme: (p.preferredTheme as Theme) || s.theme,
+          mood,
+        }))
+      })
     } catch (e) {
       setLastAuthError(e as ApiError)
       throw e
