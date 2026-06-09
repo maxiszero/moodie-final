@@ -13,6 +13,11 @@ jobs:
         image: mongo:7
         ports:
           - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval \"db.adminCommand('ping')\""
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       CI: true
       JWT_SECRET: ci-test-secret
@@ -38,7 +43,7 @@ jobs:
           pip install -r backend-py/requirements.txt
 
       - name: Python tests
-        run: python -m pytest backend-py -q
+        run: python -m pytest backend-py -q --tb=short
 
       - name: Frontend lint
         run: npm run lint

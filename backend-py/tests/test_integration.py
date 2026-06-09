@@ -3,7 +3,7 @@ import uuid
 from fastapi.testclient import TestClient
 
 from app.services.post_search import post_text_search_filter
-from support import promote_to_admin, register_user, set_user_banned, user_id
+from tests.support import promote_to_admin, register_user, user_id
 
 
 def test_post_text_search_filter_uses_text_index_for_multi_word() -> None:
@@ -146,7 +146,8 @@ def test_mood_neighbors_join_and_list(client: TestClient) -> None:
 
 def test_ban_blocks_login_and_block_user(client: TestClient) -> None:
     admin_name, _, admin_headers = register_user(client, prefix="banadmin")
-    victim_name, victim_pass, _ = register_user(client, prefix="banvictim")
+    victim_name, _, _ = register_user(client, prefix="banvictim")
+    victim_pass = "TestPass1!"
     blocker_name, _, blocker_headers = register_user(client, prefix="blocker")
     promote_to_admin(admin_name)
 
