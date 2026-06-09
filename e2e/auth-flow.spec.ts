@@ -1,8 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { skipOnboardingModals } from './helpers'
-
-const apiPort = process.env.E2E_API_PORT || '8000'
-const apiBase = process.env.E2E_API_URL || `http://127.0.0.1:${apiPort}`
+import { apiBase, skipOnboardingModals } from './helpers'
 
 test.beforeEach(async ({ page }) => {
   await skipOnboardingModals(page)

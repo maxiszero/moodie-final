@@ -47,24 +47,30 @@ ${urls}
   }
 }
 
+const apiTarget = process.env.VITE_API_TARGET || 'http://localhost:8000'
+const devProxy = {
+  '/socket.io': {
+    target: apiTarget,
+    changeOrigin: true,
+    ws: true,
+  },
+  '/share': {
+    target: apiTarget,
+    changeOrigin: true,
+  },
+  '/api': {
+    target: apiTarget,
+    changeOrigin: true,
+  },
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), viteSeoDistFiles()],
   server: {
-    proxy: {
-      '/socket.io': {
-        target: process.env.VITE_API_TARGET || 'http://localhost:8000',
-        changeOrigin: true,
-        ws: true,
-      },
-      '/share': {
-        target: process.env.VITE_API_TARGET || 'http://localhost:8000',
-        changeOrigin: true,
-      },
-      '/api': {
-        target: process.env.VITE_API_TARGET || 'http://localhost:8000',
-        changeOrigin: true,
-      },
-    },
+    proxy: devProxy,
+  },
+  preview: {
+    proxy: devProxy,
   },
 })
