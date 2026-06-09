@@ -13,6 +13,12 @@
 
 Переменные окружения — только в `backend-py/.env` (и опционально корневой `.env`).
 
+Если на сервере ещё есть старый `backend/.env`, один раз перенесите секреты:
+
+```bash
+bash deploy/migrate-env.sh /var/www/moodie
+```
+
 Мониторинг: [`MONITORING.md`](MONITORING.md).
 
 ## Обновление после `git pull`
