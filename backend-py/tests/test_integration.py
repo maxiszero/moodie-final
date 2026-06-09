@@ -136,7 +136,9 @@ def test_mood_neighbors_join_and_list(client: TestClient) -> None:
 
     mine = client.get("/api/mood-neighbors", headers=alpha_headers)
     assert mine.status_code == 200
-    assert isinstance(mine.json().get("neighbors"), list)
+    body = mine.json()
+    assert isinstance(body.get("snippets"), list)
+    assert body.get("count") is not None
 
     other = client.get("/api/mood-neighbors", headers=beta_headers)
     assert other.status_code == 200

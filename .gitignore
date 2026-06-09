@@ -14,6 +14,9 @@ frontend/.vite/
 backend-py/**/__pycache__/
 backend-py/.pytest_cache/
 backend-py/.env
+backend-py/.venv/
+
+**/.venv/
 
 test-results/
 playwright-report/
