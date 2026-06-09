@@ -60,4 +60,5 @@ jobs:
       - name: E2E tests
         env:
           MONGODB_URI: mongodb://127.0.0.1:27017/moodie_e2e
+          MOODIE_E2E: "1"
         run: npm run test:e2e

@@ -1,15 +1,11 @@
 import { expect, test } from '@playwright/test'
+import { skipOnboardingModals } from './helpers'
 
 const apiPort = process.env.E2E_API_PORT || '8000'
 const apiBase = process.env.E2E_API_URL || `http://127.0.0.1:${apiPort}`
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
-    localStorage.setItem('hasSeenOnboarding', '1')
-    localStorage.setItem('moodie_welcome_seen', '1')
-    localStorage.setItem('moodie_tg_onboarding_seen', '1')
-    localStorage.setItem('moodie_getting_started_seen', '1')
-  })
+  await skipOnboardingModals(page)
 })
 
 test('login and open feed composer', async ({ page, request }) => {

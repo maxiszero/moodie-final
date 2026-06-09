@@ -14,7 +14,9 @@ export function AuthPage() {
   const nav = useNavigate()
   const loc = useLocation()
   const { showToast } = useToast()
-  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [mode, setMode] = useState<'login' | 'register'>(() =>
+    loc.pathname === '/register' ? 'register' : 'login',
+  )
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showLoginPass, setShowLoginPass] = useState(false)

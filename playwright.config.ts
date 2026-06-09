@@ -2,6 +2,8 @@ import { defineConfig, devices } from '@playwright/test'
 
 const apiPort = process.env.E2E_API_PORT || '8000'
 const webPort = process.env.E2E_WEB_PORT || '5173'
+const apiTarget = `http://127.0.0.1:${apiPort}`
+const usePreview = Boolean(process.env.CI)
 
 export default defineConfig({
   testDir: './e2e',
@@ -18,7 +20,7 @@ export default defineConfig({
   webServer: [
     {
       command: `python -m uvicorn app.main:app --host 127.0.0.1 --port ${apiPort} --app-dir backend-py`,
-      url: `http://127.0.0.1:${apiPort}/health`,
+      url: `${apiTarget}/health`,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
       env: {
@@ -26,13 +28,20 @@ export default defineConfig({
         JWT_SECRET: process.env.JWT_SECRET || 'e2e-test-secret',
         MONGODB_URI: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/moodie_e2e',
         TELEGRAM_ENABLE_POLLING: 'false',
+        MOODIE_E2E: '1',
       },
     },
     {
-      command: `npm run dev --workspace frontend -- --host 127.0.0.1 --port ${webPort}`,
+      command: usePreview
+        ? `npm run preview --workspace frontend -- --host 127.0.0.1 --port ${webPort}`
+        : `npm run dev --workspace frontend -- --host 127.0.0.1 --port ${webPort}`,
       url: `http://127.0.0.1:${webPort}`,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
+      env: {
+        ...process.env,
+        VITE_API_TARGET: apiTarget,
+      },
     },
   ],
 })

@@ -716,6 +716,7 @@ export function FeedPage({ guestLenta }: FeedPageProps) {
               <button
                 type="button"
                 className="btn-secondary"
+                data-testid="mood-song-skip"
                 disabled={postBusy}
                 onClick={async () => {
                   setPostBusy(true)

@@ -1,12 +1,8 @@
 import { expect, test } from '@playwright/test'
+import { publishPost, skipOnboardingModals } from './helpers'
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
-    localStorage.setItem('hasSeenOnboarding', '1')
-    localStorage.setItem('moodie_welcome_seen', '1')
-    localStorage.setItem('moodie_tg_onboarding_seen', '1')
-    localStorage.setItem('moodie_getting_started_seen', '1')
-  })
+  await skipOnboardingModals(page)
 })
 
 test('register, publish post, see it in feed', async ({ page }) => {
@@ -21,8 +17,7 @@ test('register, publish post, see it in feed', async ({ page }) => {
   await page.locator('#registerSubmitBtn').click()
 
   await expect(page.locator('#feedComposer')).toBeVisible({ timeout: 15_000 })
-  await page.locator('#postInput').fill(postText)
-  await page.locator('#postBtn').click()
+  await publishPost(page, postText)
 
   await expect(page.locator('#feedContainer .post-card .post-content', { hasText: postText })).toBeVisible({
     timeout: 30_000,

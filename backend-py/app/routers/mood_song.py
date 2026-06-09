@@ -1,3 +1,4 @@
+import os
 from typing import Any
 
 import re
@@ -41,6 +42,8 @@ async def suggest_songs(body: MoodSongSuggestRequest) -> dict[str, Any]:
     if LINK_RE.search(raw):
         raise HTTPException(status_code=400, detail={"message": "Links are not allowed"})
     analysis = await analyze_emotion(raw)
+    if os.getenv("MOODIE_E2E") == "1":
+        return {"emotion": str(analysis.get("emotion") or "neutral").lower(), "songs": []}
     emotion = str(analysis.get("emotion") or "neutral").lower()
     songs = await pick_mood_song_candidates(emotion, raw, limit=body.limit, country=body.country)
     payloads = [song_payload(s) for s in songs]

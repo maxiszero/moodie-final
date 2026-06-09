@@ -1,0 +1,133 @@
+/* Search page — extracted from legacy.css */
+
+.search-page {
+  max-width: 600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.search-page__title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0 0 12px 0;
+  color: var(--text-primary);
+}
+
+.search-page__field {
+  position: relative;
+}
+
+.search-page__field .header-search {
+  width: 100%;
+}
+
+.search-page__history {
+  margin-top: 24px;
+  padding: 16px 0 0 0;
+  border-top: 1px solid var(--border-color);
+}
+
+.search-page__history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.search-page__history-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.search-page__history-title svg {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  opacity: 0.9;
+}
+
+.search-page__history-clear {
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--surface-tint);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.search-page__history-clear:hover {
+  color: var(--text-primary);
+}
+
+.search-page__history-empty {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.search-page__history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.search-page__history-item {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.search-page__history-item:last-child {
+  border-bottom: none;
+}
+
+.search-page__history-query {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  padding: 10px 12px 10px 0;
+  font: inherit;
+  font-size: 0.92rem;
+  color: var(--text-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-page__history-query:hover {
+  color: var(--accent);
+}
+
+.search-page__history-remove {
+  flex-shrink: 0;
+  width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.search-page__history-remove:hover {
+  color: var(--error-color);
+  background: var(--surface-tint);
+}
