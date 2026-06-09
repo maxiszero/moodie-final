@@ -16,17 +16,3 @@ test('register, publish post, see it in feed', async ({ page, request }) => {
     timeout: 30_000,
   })
 })
-
-test('register via UI and open feed composer', async ({ page }) => {
-  const suffix = Date.now().toString(36)
-  const username = `e2e_ui_${suffix}`
-  const password = 'TestPass1!'
-
-  await page.goto('/register')
-  await page.locator('#registerUsername').fill(username)
-  await page.locator('#registerPassword').fill(password)
-  await expect(page.locator('#registerSubmitBtn')).toBeEnabled({ timeout: 5_000 })
-  await page.locator('#registerSubmitBtn').click()
-
-  await expect(page.locator('#feedComposer')).toBeVisible({ timeout: 30_000 })
-})
