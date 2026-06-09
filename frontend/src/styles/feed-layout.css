@@ -16,23 +16,3 @@
   }
 }
 
-@media (max-width: 640px) {
-  .post-card.living-post {
-    padding: 0 !important;
-    overflow: visible !important;
-  }
-
-  .post-card.living-post::before {
-    display: none !important;
-  }
-
-  .post-card.living-post .post-content-container {
-    border: none;
-    box-shadow: none !important;
-    padding: 16px;
-  }
-
-  .post-card.living-post:hover .post-content-container {
-    box-shadow: none !important;
-  }
-}

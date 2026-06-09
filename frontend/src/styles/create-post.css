@@ -1,0 +1,195 @@
+/* create post — extracted from legacy.css */
+
+/* Create Post */
+.create-post {
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    margin-bottom: 32px;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.create-post:focus-within {
+    box-shadow: var(--shadow-md);
+    border-color: rgba(var(--accent-rgb), 0.35);
+    transform: translateY(-1px);
+}
+
+.create-post-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.user-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    flex-shrink: 0;
+    background: var(--emotion-neutral);
+    transition: background 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    line-height: 1;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    background-size: 200% 200% !important;
+    animation: gradientShift 4s linear infinite;
+}
+
+/* No box-shadow for header + create-post avatars (user request) */
+#headerUserCircle,
+#currentUserCircle {
+    box-shadow: none !important;
+}
+.post-input-area {
+    flex-grow: 1;
+    padding-top: 8px;
+}
+
+.create-post #postInput {
+    padding: 4px 0;
+    line-height: 1.45;
+}
+
+textarea {
+    width: 100%;
+    border: none;
+    resize: none;
+    font-family: inherit;
+    font-size: 1.05rem;
+    color: var(--text-primary);
+    outline: none;
+    min-height: 50px;
+    background: transparent;
+}
+
+textarea::placeholder {
+    color: var(--text-secondary);
+}
+
+.create-post-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: baseline;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+    position: relative;
+}
+
+.char-counter {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-right: 12px;
+    font-weight: 500;
+}
+
+.char-counter.limit-reached {
+    color: #ef4444;
+}
+
+.composer-footnote {
+    margin-top: 10px;
+    padding-left: 56px;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    line-height: 1.35;
+}
+
+button {
+    background-color: var(--primary-btn);
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: var(--radius-full);
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease, opacity 0.2s ease;
+    font-family: inherit;
+}
+
+button:hover:not(:disabled) {
+    background-color: var(--primary-btn-hover);
+}
+button:active:not(:disabled) {
+    transform: scale(0.98);
+    background-color: var(--primary-btn-active, var(--primary-btn-hover));
+}
+button:disabled { opacity: 0.7; cursor: not-allowed; }
+
+#userInfo {
+    background: none !important;
+    color: var(--text-primary) !important;
+    padding: 0;
+    border-radius: 0;
+    font-weight: 600;
+}
+
+#userInfo:hover:not(:disabled) {
+    background: none !important;
+    text-decoration: underline;
+}
+
+.back-row button {
+    background: none !important;
+    color: var(--text-secondary);
+    padding: 0 16px;
+    border-radius: 0;
+    font-weight: 500;
+}
+
+.back-row button:hover:not(:disabled) {
+    background: none !important;
+    color: var(--text-primary);
+}
+
+.post-subscribe-btn {
+    background: transparent !important;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+}
+
+.post-subscribe-btn:hover:not(:disabled) {
+  background: var(--surface-tint) !important;
+  border-color: rgba(99, 102, 241, 0.4) !important;
+  color: var(--text-primary) !important;
+}
+
+@media (max-width: 480px) {
+  .create-post {
+    padding: 16px;
+  }
+
+  .create-post-actions {
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .create-post-actions #aiTipBtn {
+    order: 3;
+    width: 100%;
+    margin-right: 0 !important;
+  }
+
+  .composer-footnote {
+    padding-left: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .create-post {
+    border-left: none;
+    border-right: none;
+    min-width: 0;
+    max-width: 100%;
+    background: var(--card-bg);
+    border-color: var(--border-color);
+  }
+}

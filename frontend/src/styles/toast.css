@@ -1,0 +1,82 @@
+/* toast — extracted from legacy.css */
+
+/* Toast (lightweight) */
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%) translateY(8px);
+    opacity: 0;
+    pointer-events: none;
+    background: rgba(20, 20, 24, 0.92);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.10);
+    box-shadow: var(--shadow-md);
+    padding: 10px 14px;
+    border-radius: 14px;
+    max-width: min(560px, calc(100vw - 32px));
+    font-size: 0.92rem;
+    line-height: 1.25;
+    z-index: 99999;
+    transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.toast[data-kind='error'] {
+    background: rgba(120, 30, 40, 0.92);
+    border-color: rgba(255,255,255,0.14);
+}
+
+.toast.toast--show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.toast-viewport {
+    position: fixed;
+    left: 50%;
+    bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+    z-index: 99999;
+    display: flex;
+    width: min(420px, calc(100vw - 32px));
+    transform: translateX(-50%);
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.app-toast {
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: rgba(17, 24, 39, 0.94);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.22);
+    font-size: 0.92rem;
+    line-height: 1.35;
+    animation: toastSlideIn 0.18s ease;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+}
+
+.app-toast--success {
+    background: rgba(22, 101, 52, 0.94);
+}
+
+.app-toast--error {
+    background: rgba(153, 27, 27, 0.94);
+}
+
+.app-toast--info {
+    background: rgba(49, 46, 129, 0.94);
+}
+
+@keyframes toastSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}

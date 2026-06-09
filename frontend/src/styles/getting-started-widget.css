@@ -1,0 +1,159 @@
+/* getting started widget — extracted from legacy.css */
+
+/* Getting Started widget */
+.gs-widget {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+.gs-widget__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.gs-widget__title {
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.gs-widget__toggle {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-weight: 600;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 10px;
+}
+
+.gs-widget__toggle:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+}
+
+.gs-widget--compact-link {
+    cursor: pointer;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.gs-widget--compact-link:hover,
+.gs-widget--compact-link:focus-visible {
+    border-color: rgba(var(--accent-rgb), 0.35);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+    outline: none;
+}
+
+.gs-widget__meta {
+    margin-top: 6px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.getting-started-modal {
+    max-height: calc(100dvh - 40px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+@media (max-width: 640px) {
+    .getting-started-page .gs-widget {
+        gap: 10px;
+    }
+
+    .getting-started-modal {
+        max-height: calc(100dvh - 24px);
+        padding: 18px;
+        border-radius: 18px;
+    }
+}
+
+.gs-widget__list {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.gs-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.02);
+    transition:
+        border-color 0.3s ease,
+        background 0.3s ease,
+        opacity 0.3s ease,
+        transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gs-item.is-done {
+    opacity: 0.85;
+}
+
+.gs-item__box {
+    width: 22px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gs-task-icon {
+    display: block;
+    color: var(--text-secondary);
+    opacity: 0.85;
+}
+
+.gs-task-icon__ring {
+    opacity: 0.45;
+}
+
+.gs-task-icon--done {
+    color: #16a34a;
+    opacity: 1;
+}
+
+[data-theme='dark'] .gs-task-icon--done {
+    color: #4ade80;
+}
+
+.gs-modal-task-icon .gs-task-icon {
+    vertical-align: middle;
+}
+
+.gs-item__text {
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+@media (max-width: 640px) {
+    .gs-widget__list {
+        margin-top: 8px;
+        gap: 6px;
+    }
+
+    .gs-item {
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 10px;
+    }
+
+    .gs-item__box {
+        width: 20px;
+    }
+
+    .gs-item__text {
+        font-size: 0.88rem;
+    }
+}

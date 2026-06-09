@@ -1,0 +1,241 @@
+/* post living — extracted from legacy.css */
+
+/* --- Living Posts & Emotional Visuals --- */
+@keyframes float-glow {
+    0% { transform: translate3d(0, 0, 0) scale(1); filter: brightness(1); }
+    50% { transform: translate3d(0, -3px, 0) scale(1.008); filter: brightness(1.06); }
+    100% { transform: translate3d(0, 0, 0) scale(1); filter: brightness(1); }
+}
+
+@keyframes breathing-soft {
+    0% { transform: scale(1); opacity: 0.95; }
+    50% { transform: scale(1.005); opacity: 1; }
+    100% { transform: scale(1); opacity: 0.95; }
+}
+
+@keyframes shaky-unstable {
+    0% { transform: translate3d(0, 0, 0) rotate(0deg); }
+    25% { transform: translate3d(-0.6px, 0.6px, 0) rotate(-0.12deg); }
+    50% { transform: translate3d(0.6px, -0.6px, 0) rotate(0.12deg); }
+    75% { transform: translate3d(-0.4px, -0.4px, 0) rotate(-0.08deg); }
+    100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+}
+
+@keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4); }
+    70% { box-shadow: 0 0 0 30px rgba(255, 255, 255, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+}
+
+.post-card.living-post {
+    border: none;
+    position: relative;
+    z-index: 0;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    /* transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); ВРЕМЕННО ОТКЛЮЧЕНО */
+    background: transparent;
+    animation: none !important; /* ВРЕМЕННО ОТКЛЮЧЕНО */
+}
+
+/* Фоновое свечение за карточкой (на мобилках отключено — blur + scale дают огромное пятно в WebKit) */
+.post-card.living-post::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--post-gradient);
+    border-radius: var(--radius-lg);
+    z-index: -1;
+    filter: blur(48px);
+    opacity: 0.45;
+    transform: scale(1.25);
+    pointer-events: none;
+    will-change: transform, filter, opacity;
+}
+
+.post-card.living-post::after {
+    display: none;
+}
+
+.post-card.living-post .post-content-container {
+    position: relative;
+    z-index: 2;
+    background: var(--card-bg); /* Дефолтный цвет карточки */
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    transition: box-shadow 0.25s ease;
+    overflow: hidden;
+    /* цветная тень задаётся inline (softMoodShadow) */
+}
+
+/* Базовая тень карточки (если inline-тень не задана/не поддерживается) */
+.post-card.living-post .post-content-container {
+    box-shadow: var(--shadow-sm);
+}
+
+.post-card.living-post:hover .post-content-container {
+    box-shadow: var(--shadow-md);
+}
+
+/* Dim background when focusing a post (comments open) */
+.feed-dim {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    border: none;
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    animation: feedDimIn 160ms ease-out;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+@keyframes feedDimIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.post-card--comments-focus {
+    position: relative;
+    z-index: 60;
+}
+
+/* Emotion specific animations applied to background */
+.post-card.anim-happy::before { animation: float-glow var(--anim-speed) infinite ease-in-out; }
+.post-card.anim-anxious::before { animation: shaky-unstable 0.35s infinite ease-in-out; }
+.post-card.anim-calm::before { animation: breathing-soft 4.5s infinite ease-in-out; }
+
+@media (prefers-reduced-motion: reduce) {
+    .post-card.living-post::before {
+        animation: none !important;
+        transform: scale(1.1);
+        filter: blur(28px);
+        opacity: 0.35;
+    }
+}
+
+/* Intensity bar */
+.intensity-bar-container {
+    height: 4px;
+    background: var(--border-color);
+    border-radius: 2px;
+    margin-top: 8px;
+    overflow: hidden;
+    width: 100px;
+}
+.intensity-bar-fill {
+    height: 100%;
+    background: var(--text-secondary);
+    transition: width 1s ease-out;
+}
+
+/* Emotional Reactions */
+.reaction-group {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.reaction-btn {
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 6px 14px;
+    border-radius: var(--radius-full);
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.reaction-btn:hover {
+    background: var(--surface-tint);
+    border-color: rgba(99, 102, 241, 0.35);
+    color: var(--text-primary);
+    transform: translateY(-2px);
+}
+
+.reaction-btn.active {
+    background: var(--primary-btn);
+    color: #fff;
+    border-color: transparent;
+    font-weight: 600;
+}
+
+.reaction-btn .reaction-count {
+    background: rgba(128,128,128,0.1);
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+}
+.living-post .post-menu-btn {
+    color: var(--text-secondary);
+}
+
+.living-post .post-menu-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-color);
+}
+@media (min-width: 641px) {
+  .post-card.living-post {
+    overflow: visible !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .post-card.living-post {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .post-card.living-post::before {
+    display: none !important;
+  }
+
+  .post-card.living-post .post-content-container {
+    border: none;
+    box-shadow: none !important;
+    padding: 16px;
+  }
+
+  .post-card.living-post:hover .post-content-container {
+    box-shadow: none !important;
+  }
+
+  .reaction-group {
+    gap: 6px 8px;
+  }
+
+  .reaction-btn {
+    padding: 5px 10px;
+    font-size: 0.8rem;
+    background: var(--card-bg);
+    border-color: var(--border-color);
+  }
+
+  .reaction-btn:hover {
+    background: var(--accent-soft);
+  }
+
+  .reaction-btn.active {
+    background: var(--primary-btn);
+    color: #fff;
+    border-color: transparent;
+  }
+
+  .reaction-btn.active:hover {
+    background: var(--primary-btn);
+    color: #fff;
+  }
+}

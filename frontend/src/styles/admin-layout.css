@@ -1,0 +1,240 @@
+/* admin layout — extracted from legacy.css */
+
+.admin-section {
+    margin-bottom: 32px;
+}
+
+.admin-section h2 {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+.admin-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--card-bg);
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.admin-table__mono {
+    font-size: 0.8rem;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.admin-table th, .admin-table td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: top;
+}
+
+.admin-table th {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+@media (min-width: 641px) {
+    .admin-table tr:last-child td { border-bottom: none; }
+}
+
+/* Admin: table action buttons (override full-width .auth-btn in cells) */
+.admin-view .admin-table .admin-table__btn {
+    width: auto;
+    max-width: 100%;
+    margin-top: 0;
+}
+
+.admin-view .admin-table__post-text {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+/* Admin: mobile — row cards, labels from data-label */
+@media (max-width: 640px) {
+    .admin-view .back-row button {
+        min-height: 44px;
+        padding: 10px 12px 10px 4px;
+        margin-left: -4px;
+        border-radius: 10px;
+    }
+
+    .admin-view .page-title {
+        font-size: 1.2rem;
+        margin-bottom: 16px;
+    }
+
+    .admin-view .admin-section {
+        margin-bottom: 24px;
+    }
+
+    .admin-view .admin-section h2 {
+        font-size: 1rem;
+        margin-bottom: 10px;
+    }
+
+    .admin-view .admin-table-wrap {
+        overflow-x: visible;
+        border: none;
+        background: transparent;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .admin-view .admin-table--users,
+    .admin-view .admin-table--posts {
+        display: block;
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .admin-view .admin-table--users thead,
+    .admin-view .admin-table--posts thead {
+        display: none;
+    }
+
+    .admin-view .admin-table--users tbody,
+    .admin-view .admin-table--posts tbody {
+        display: block;
+        width: 100%;
+    }
+
+    .admin-view .admin-table--users tr,
+    .admin-view .admin-table--posts tr {
+        display: block;
+        width: 100%;
+        margin-bottom: 12px;
+        padding: 0;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        background: var(--card-bg);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .admin-view .admin-table--users tr:last-child,
+    .admin-view .admin-table--posts tr:last-child {
+        margin-bottom: 0;
+    }
+
+    .admin-view .admin-table--users td,
+    .admin-view .admin-table--posts td {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px 12px;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--border-color);
+        text-align: right;
+    }
+
+    .admin-view .admin-table--users td:last-child,
+    .admin-view .admin-table--posts td:last-child {
+        border-bottom: none;
+    }
+
+    .admin-view .admin-table td::before {
+        content: attr(data-label);
+        flex: 1 1 auto;
+        min-width: 0;
+        padding-right: 10px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--text-secondary);
+        line-height: 1.35;
+    }
+
+    .admin-view .admin-table__post-text {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: left;
+        max-width: none;
+    }
+
+    .admin-view .admin-table__post-text::before {
+        flex: 0 0 auto;
+        width: 100%;
+        padding-right: 0;
+        margin-bottom: 2px;
+    }
+
+    .admin-view .admin-table__cell--action {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: left;
+    }
+
+    .admin-view .admin-table__cell--action::before {
+        width: 100%;
+        padding-right: 0;
+        margin-bottom: 4px;
+    }
+
+    .admin-view .admin-table .admin-table__btn {
+        width: 100%;
+        min-height: 44px;
+        padding: 10px 14px;
+        font-size: 0.9rem;
+    }
+
+    .admin-view .admin-table__mono {
+        white-space: normal;
+        word-break: break-all;
+    }
+}
+
+.admin-post-snippet {
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.btn-danger {
+    background: #b91c1c;
+    color: #fff;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+}
+
+.btn-danger:hover:not(:disabled) {
+    background: #991b1b;
+}
+
+.btn-small {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+}
+
+.post-subscribe-row {
+    margin-top: 6px;
+}
+
+.post-subscribe-btn {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.post-subscribe-btn:hover {
+    border-color: var(--text-primary);
+    color: var(--text-primary);
+}
