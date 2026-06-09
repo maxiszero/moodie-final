@@ -26,7 +26,6 @@
 |-------|--------|
 | **Frontend** | React 19, TypeScript, Vite, React Router, Framer Motion, Socket.IO client |
 | **API** | FastAPI (`backend-py`), Motor (async MongoDB), Pydantic, python-socketio, JWT |
-| **Legacy** | `backend/` (Express) and `python-service/` — deprecated; not used in dev/prod |
 | **Mood analysis** | In-process in `backend-py` (`ai.py`) — Groq/Gemini with rule-based fallback |
 | **Database** | MongoDB |
 | **Integrations** | Telegram Bot API, iTunes Search (mood songs) |
@@ -57,7 +56,7 @@ npm install
 
 **API (Python)** — copy `backend-py/.env.example` to `backend-py/.env` and set `MONGODB_URI`, `JWT_SECRET`, `CORS_ORIGIN`, and optionally AI keys (`AI_API_KEY`, `GEMINI_API_KEY`) and Telegram (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEB_APP_URL`).
 
-> `backend/` (Node) and `python-service/` are **legacy** and no longer required for dev or production. The FastAPI app in `backend-py/` is the single backend.
+> The FastAPI app in `backend-py/` is the only backend. Legacy Node/python-service folders were removed from the repo.
 
 **Python API dependencies:**
 
@@ -144,10 +143,8 @@ npm run telegram:setup
 ```text
 frontend/          React SPA (pages, components, i18n)
 backend-py/        FastAPI + Motor API, Telegram bot, CSV I/O
-backend/           legacy Express API (deprecated — do not run)
-python-service/    legacy mood microservice (deprecated)
 deploy/            nginx, PM2, DEPLOY.md, MONITORING.md, healthcheck.sh
-LEGACY.md          deprecated Node/python-service folders
+LEGACY.md          note on removed Node/python-service code
 e2e/               Playwright smoke + happy-path tests
 .github/workflows/ CI (pytest, lint, build, E2E)
 docs/              PALETTE.md (emotion colors)

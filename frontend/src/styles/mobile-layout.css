@@ -1,0 +1,217 @@
+/* Mobile shell: bottom nav, safe-area padding, Telegram Mini App tweaks */
+
+#appMobileNav.app-mobile-nav {
+  display: none !important;
+}
+
+@media (max-width: 640px) {
+  main {
+    padding-bottom: calc(132px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .feed,
+  #profilePosts,
+  #profileView {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  }
+
+  #appHeader {
+    display: none !important;
+  }
+
+  #appMobileNav.app-mobile-nav {
+    display: flex !important;
+    left: max(12px, env(safe-area-inset-left, 0px));
+    right: max(12px, env(safe-area-inset-right, 0px));
+    width: auto;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    padding: 10px 6px;
+    border-radius: 22px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: rgba(255, 255, 255, 0.58);
+    backdrop-filter: blur(22px) saturate(1.2);
+    -webkit-backdrop-filter: blur(22px) saturate(1.2);
+    box-shadow:
+      0 12px 40px rgba(15, 23, 42, 0.14),
+      0 0 0 1px rgba(255, 255, 255, 0.45) inset;
+  }
+
+  [data-theme='dark'] #appMobileNav.app-mobile-nav {
+    background: rgba(15, 20, 30, 0.92);
+    border-color: rgba(148, 163, 184, 0.22);
+    backdrop-filter: blur(24px) saturate(1.15);
+    -webkit-backdrop-filter: blur(24px) saturate(1.15);
+    box-shadow:
+      0 14px 48px rgba(0, 0, 0, 0.55),
+      0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+  }
+
+  body.telegram-mini-app main {
+    padding-top: max(12px, env(safe-area-inset-top, 0px));
+    padding-bottom: calc(152px + env(safe-area-inset-bottom, 0px));
+  }
+
+  body.telegram-mini-app .profile-hero {
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+    border-radius: var(--radius-lg);
+    border-left: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+  }
+
+  body.telegram-mini-app #profileView .profile-banner {
+    border-radius: calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px) 0 0;
+  }
+
+  body.telegram-mini-app #profileView .back-row {
+    display: none;
+  }
+
+  body.telegram-mini-app .profile-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px 6px;
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+
+  body.telegram-mini-app .profile-stat {
+    min-width: 0;
+  }
+
+  body.telegram-mini-app .profile-stat-label {
+    font-size: 0.58rem;
+    letter-spacing: 0.02em;
+    line-height: 1.25;
+    hyphens: auto;
+  }
+
+  body.telegram-mini-app .profile-stat-value {
+    font-size: 1.1rem;
+  }
+
+  body.telegram-mini-app #profilePosts,
+  body.telegram-mini-app .feed,
+  body.telegram-mini-app #profileView {
+    padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px));
+  }
+
+  body.telegram-mini-app #profileView .heatmap-container {
+    margin-bottom: 20px;
+  }
+}
+
+@media (max-width: 380px) {
+  #appMobileNav .app-mobile-nav__label {
+    display: none;
+  }
+
+  #appMobileNav .app-mobile-nav__tab {
+    padding: 8px 4px;
+    max-width: none;
+  }
+}
+
+.app-mobile-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(20px) saturate(1.15);
+  -webkit-backdrop-filter: blur(20px) saturate(1.15);
+  padding: 0;
+}
+
+.app-mobile-nav__tabs {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  gap: 4px;
+  width: 100%;
+  min-height: 54px;
+  padding: 0 4px;
+}
+
+.app-mobile-nav__tab {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  max-width: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 4px;
+  text-decoration: none;
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.62rem;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  border-radius: 14px;
+  background: transparent;
+  transition:
+    color 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.2s ease,
+    box-shadow 0.28s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-mobile-nav__tab:active {
+  transform: scale(0.96);
+}
+
+.app-mobile-nav__tab.active,
+.app-mobile-nav__tab[aria-current='page'] {
+  color: var(--text-primary);
+  font-weight: 800;
+  background: var(--card-bg);
+  box-shadow:
+    0 2px 10px rgba(15, 23, 42, 0.08),
+    inset 0 0 0 1px var(--border-color);
+}
+
+[data-theme='dark'] .app-mobile-nav__tab.active,
+[data-theme='dark'] .app-mobile-nav__tab[aria-current='page'] {
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.app-mobile-nav__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.82;
+}
+
+.app-mobile-nav__tab.active .app-mobile-nav__icon,
+.app-mobile-nav__tab[aria-current='page'] .app-mobile-nav__icon {
+  opacity: 1;
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] .app-mobile-nav__tab.active .app-mobile-nav__icon,
+[data-theme='dark'] .app-mobile-nav__tab[aria-current='page'] .app-mobile-nav__icon {
+  color: var(--text-primary);
+}
+
+.app-mobile-nav__tab:not(.active):not([aria-current='page']):hover .app-mobile-nav__icon {
+  color: var(--accent);
+}
+
+.app-mobile-nav__label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}

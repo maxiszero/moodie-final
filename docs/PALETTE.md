@@ -14,7 +14,7 @@ Aliases (e.g. `calm` → `calmness`, `inspired` → `inspiration`) live in `back
 1. Update `backend-py/app/services/palette.py` first.
 2. Mirror the same keys in `frontend/src/config/emotionPalette.ts` and any literal fallbacks in `backend-py/app/services/ai.py`.
 3. Update `frontend/src/config/emotionPalette.ts` (`ONBOARDING_EMOTION_CARDS`) and, if needed, `legacy.css` `--emotion-*` variables.
-4. Optional: run a one-shot MongoDB update for old user/post documents if emotion triples changed (script in legacy `backend/` is deprecated; prefer a small Python migration if needed).
+4. Optional: run a one-shot MongoDB update for old user/post documents if emotion triples changed (write a small Python migration script in `backend-py/scripts/` if needed).
 
 ## Current triples (reference)
 

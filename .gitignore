@@ -11,14 +11,6 @@ frontend/dist/
 frontend/node_modules/
 frontend/.vite/
 
-backend/dist/
-backend/dist-test/
-backend/node_modules/
-
-python-service/.venv/
-python-service/__pycache__/
-python-service/.pytest_cache/
-
 backend-py/**/__pycache__/
 backend-py/.pytest_cache/
 backend-py/.env

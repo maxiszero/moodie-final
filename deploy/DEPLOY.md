@@ -11,7 +11,7 @@
 | `moodie-backend` (Node) | **Нет** — legacy, удалить: `pm2 delete moodie-backend` |
 | `moodie-python` (старый сервис) | **Нет** — legacy, удалить: `pm2 delete moodie-python` |
 
-Переменные окружения — только в `backend-py/.env` (и опционально корневой `.env`). Файл `backend/.env` больше не читается API.
+Переменные окружения — только в `backend-py/.env` (и опционально корневой `.env`).
 
 Мониторинг: [`MONITORING.md`](MONITORING.md).
 
